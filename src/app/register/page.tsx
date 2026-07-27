@@ -2,25 +2,28 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-export default function Login() {
+export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
     });
@@ -28,7 +31,16 @@ export default function Login() {
     if (error) {
       setError(error.message);
     } else {
-      router.push("/");
+      if (data.session) {
+        // Logged in automatically
+        router.push("/");
+      } else {
+        // Email confirmation required or just signed up
+        setSuccess("Registration successful! You can now log in.");
+        setTimeout(() => {
+          router.push("/login");
+        }, 3000);
+      }
     }
     setLoading(false);
   };
@@ -37,13 +49,13 @@ export default function Login() {
     <div className="flex h-screen w-screen items-center justify-center bg-gray-50/50">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl">Admin Login</CardTitle>
+          <CardTitle className="text-2xl">Admin Register</CardTitle>
           <CardDescription>
-            Enter your email below to log into the CMS dashboard.
+            Create an admin account for the CMS dashboard.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="grid gap-4">
+          <form onSubmit={handleRegister} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -66,14 +78,15 @@ export default function Login() {
               />
             </div>
             {error && <p className="text-sm text-red-500">{error}</p>}
+            {success && <p className="text-sm text-green-600">{success}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Logging in..." : "Login"}
+              {loading ? "Registering..." : "Register"}
             </Button>
             <div className="text-center text-sm text-gray-500 mt-2">
-              Don't have an account?{" "}
-              <a href="/register" className="text-blue-600 hover:underline">
-                Register here
-              </a>
+              Already have an account?{" "}
+              <Link href="/login" className="text-blue-600 hover:underline">
+                Login here
+              </Link>
             </div>
           </form>
         </CardContent>

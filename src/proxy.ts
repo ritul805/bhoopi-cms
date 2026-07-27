@@ -44,7 +44,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (request.nextUrl.pathname.startsWith('/login') && user) {
+  if ((request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register')) && user) {
     const url = request.nextUrl.clone();
     url.pathname = '/episodes';
     return NextResponse.redirect(url);
