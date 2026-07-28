@@ -50,14 +50,14 @@ export default function NewEpisode() {
 
   const getAudioFolder = () => {
     const selectedStory = stories.find(s => s.id === formData.story_id);
-    if (!selectedStory || !selectedStory.title) return "audio";
-    return `${selectedStory.title}/audio`;
+    if (!selectedStory || !selectedStory.title) return "stories/audio";
+    return `stories/${selectedStory.title}/audio`;
   };
 
   const getImageFolder = () => {
     const selectedStory = stories.find(s => s.id === formData.story_id);
-    if (!selectedStory || !selectedStory.title) return "images";
-    return `${selectedStory.title}/images`;
+    if (!selectedStory || !selectedStory.title) return "stories/images";
+    return `stories/${selectedStory.title}/images`;
   };
 
   return (
@@ -144,7 +144,7 @@ export default function NewEpisode() {
                 <p className="text-sm text-amber-600">Please select a Story first to upload the audio to the correct folder.</p>
               ) : (
                 <MediaUploader
-                  bucket="stories"
+                  bucket="story-assets"
                   folder={getAudioFolder()}
                   accept="audio/*"
                   onUploadSuccess={(url) => setFormData({ ...formData, audio_url: url })}
@@ -161,7 +161,7 @@ export default function NewEpisode() {
                 <p className="text-sm text-amber-600">Please select a Story first to upload the image to the correct folder.</p>
               ) : (
                 <MediaUploader
-                  bucket="stories"
+                  bucket="story-assets"
                   folder={getImageFolder()}
                   accept="image/*"
                   onUploadSuccess={(url) => setFormData({ ...formData, image_url: url })}

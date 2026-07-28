@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ export default function Login() {
       setError(error.message);
     } else {
       router.push("/");
+      router.refresh();
     }
     setLoading(false);
   };
@@ -71,9 +73,9 @@ export default function Login() {
             </Button>
             <div className="text-center text-sm text-gray-500 mt-2">
               Don't have an account?{" "}
-              <a href="/register" className="text-blue-600 hover:underline">
+              <Link href="/register" className="text-blue-600 hover:underline">
                 Register here
-              </a>
+              </Link>
             </div>
           </form>
         </CardContent>

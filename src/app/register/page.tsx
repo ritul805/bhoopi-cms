@@ -32,14 +32,16 @@ export default function Register() {
       setError(error.message);
     } else {
       if (data.session) {
-        // Logged in automatically
-        router.push("/");
+        setSuccess("Registration successful! Logging you in...");
+        setTimeout(() => {
+          router.push("/");
+          router.refresh();
+        }, 1500);
       } else {
-        // Email confirmation required or just signed up
-        setSuccess("Registration successful! You can now log in.");
+        setSuccess("Account created successfully! You can now log in.");
         setTimeout(() => {
           router.push("/login");
-        }, 3000);
+        }, 2500);
       }
     }
     setLoading(false);

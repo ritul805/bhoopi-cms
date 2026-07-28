@@ -38,8 +38,8 @@ export default function NewStory() {
   };
 
   const getStoryUploadFolder = () => {
-    if (!formData.title) return "Images";
-    return `${formData.title}/Images`;
+    if (!formData.title) return "stories";
+    return `stories/${formData.title}/images`;
   };
 
   return (
@@ -124,7 +124,7 @@ export default function NewStory() {
                 <p className="text-sm text-amber-600">Please enter a Title first to upload the cover correctly.</p>
               ) : (
                 <MediaUploader
-                  bucket="stories"
+                  bucket="story-assets"
                   folder={getStoryUploadFolder()}
                   onUploadSuccess={(url) => setFormData({ ...formData, cover_url: url })}
                 />
