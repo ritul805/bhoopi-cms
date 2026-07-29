@@ -41,6 +41,21 @@ export default function NewEpisode() {
     const { error } = await supabase.from("episodes").insert([formData]);
 
     if (!error) {
+      if (formData.story_id) {
+        const { data: epData } = await supabase
+          .from("episodes")
+          .select("duration_seconds")
+          .eq("story_id", formData.story_id);
+        
+        if (epData) {
+          const totalPages = epData.length;
+          const totalDuration = epData.reduce((acc, curr) => acc + (curr.duration_seconds || 0), 0);
+          await supabase
+            .from("stories")
+            .update({ total_pages: totalPages, duration_seconds: totalDuration })
+            .eq("id", formData.story_id);
+        }
+      }
       router.push("/episodes");
     } else {
       alert("Error: " + error.message);
@@ -147,7 +162,11 @@ export default function NewEpisode() {
                   bucket="story-assets"
                   folder={getAudioFolder()}
                   accept="audio/*"
-                  onUploadSuccess={(url) => setFormData({ ...formData, audio_url: url })}
+                  onUploadSuccess={(url, durationSeconds) => setFormData((prev) => ({
+                    ...prev,
+                    audio_url: url,
+                    duration_seconds: durationSeconds && durationSeconds > 0 ? durationSeconds : prev.duration_seconds
+                  }))}
                 />
               )}
               {formData.audio_url && (

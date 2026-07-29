@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { UploadCloud, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface MediaUploaderProps {
   bucket: string;
   folder?: string;
-  onUploadSuccess: (url: string) => void;
+  onUploadSuccess: (url: string, durationSeconds?: number) => void;
   accept?: string;
 }
 
@@ -25,6 +24,23 @@ export function MediaUploader({ bucket, folder = "uploads", onUploadSuccess, acc
       const file = event.target.files?.[0];
       if (!file) return;
 
+      let detectedDuration = 0;
+      if (file.type.startsWith('audio/')) {
+        try {
+          const audioUrl = URL.createObjectURL(file);
+          const audio = new Audio(audioUrl);
+          await new Promise((resolve) => {
+            audio.onloadedmetadata = () => {
+              detectedDuration = Math.round(audio.duration || 0);
+              resolve(null);
+            };
+            audio.onerror = () => resolve(null);
+          });
+        } catch (e) {
+          console.warn("Audio duration detection failed:", e);
+        }
+      }
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
       const filePath = `${folder}/${fileName}`;
@@ -36,7 +52,7 @@ export function MediaUploader({ bucket, folder = "uploads", onUploadSuccess, acc
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
-      onUploadSuccess(data.publicUrl);
+      onUploadSuccess(data.publicUrl, detectedDuration);
     } catch (err: any) {
       setError(err.message);
     } finally {

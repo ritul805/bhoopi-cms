@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -11,23 +11,40 @@ import { MediaUploader } from "@/components/MediaUploader";
 
 export default function NewStory() {
   const router = useRouter();
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
+    category_id: "",
     description: "",
     moral_lesson: "",
     cover_url: "",
+    thumbnail_url: "",
     duration_seconds: 0,
     total_pages: 0,
     is_premium: false,
     is_featured: false,
   });
 
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data } = await supabase.from("story_categories").select("id, title").order("title");
+      if (data) setCategories(data);
+    };
+    fetchCategories();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.from("stories").insert([formData]);
+    const payload = {
+      ...formData,
+      category_id: formData.category_id || null,
+      thumbnail_url: formData.thumbnail_url || formData.cover_url,
+    };
+
+    const { error } = await supabase.from("stories").insert([payload]);
 
     if (!error) {
       router.push("/stories");
@@ -63,6 +80,22 @@ export default function NewStory() {
               />
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="category">Category</Label>
+              <select
+                id="category"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={formData.category_id}
+                onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+              >
+                <option value="">Select a Category</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
               <Input
                 id="description"
@@ -86,6 +119,7 @@ export default function NewStory() {
                   type="number"
                   value={formData.duration_seconds}
                   onChange={(e) => setFormData({ ...formData, duration_seconds: parseInt(e.target.value) || 0 })}
+                  placeholder="Auto-calculated from episodes"
                 />
               </div>
               <div className="grid gap-2">
@@ -95,6 +129,7 @@ export default function NewStory() {
                   type="number"
                   value={formData.total_pages}
                   onChange={(e) => setFormData({ ...formData, total_pages: parseInt(e.target.value) || 0 })}
+                  placeholder="Auto-calculated from episodes"
                 />
               </div>
             </div>
@@ -126,7 +161,7 @@ export default function NewStory() {
                 <MediaUploader
                   bucket="story-assets"
                   folder={getStoryUploadFolder()}
-                  onUploadSuccess={(url) => setFormData({ ...formData, cover_url: url })}
+                  onUploadSuccess={(url) => setFormData({ ...formData, cover_url: url, thumbnail_url: url })}
                 />
               )}
               {formData.cover_url && (

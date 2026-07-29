@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 export default function StoriesPage() {
@@ -13,7 +13,11 @@ export default function StoriesPage() {
 
   const fetchStories = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("stories").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("stories")
+      .select("*, story_categories(title)")
+      .order("created_at", { ascending: false });
+
     if (!error && data) {
       setStories(data);
     }
@@ -46,6 +50,7 @@ export default function StoriesPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead>Duration (s)</TableHead>
               <TableHead>Total Pages</TableHead>
               <TableHead>Premium</TableHead>
@@ -55,13 +60,13 @@ export default function StoriesPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   Loading stories...
                 </TableCell>
               </TableRow>
             ) : stories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   No stories found.
                 </TableCell>
               </TableRow>
@@ -69,6 +74,7 @@ export default function StoriesPage() {
               stories.map((story) => (
                 <TableRow key={story.id}>
                   <TableCell className="font-medium">{story.title}</TableCell>
+                  <TableCell>{story.story_categories?.title || "-"}</TableCell>
                   <TableCell>{story.duration_seconds || 0}s</TableCell>
                   <TableCell>{story.total_pages || 0}</TableCell>
                   <TableCell>{story.is_premium ? "Yes" : "No"}</TableCell>
