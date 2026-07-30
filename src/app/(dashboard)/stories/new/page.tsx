@@ -12,10 +12,10 @@ import { MediaUploader } from "@/components/MediaUploader";
 export default function NewStory() {
   const router = useRouter();
   const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
-    category_id: "",
     description: "",
     moral_lesson: "",
     cover_url: "",
@@ -34,23 +34,51 @@ export default function NewStory() {
     fetchCategories();
   }, []);
 
+  const handleCategoryToggle = (id: string) => {
+    setSelectedCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((catId) => catId !== id) : [...prev, id]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     const payload = {
       ...formData,
-      category_id: formData.category_id || null,
+      category_id: selectedCategoryIds[0] || null, // Primary category for legacy compatibility
       thumbnail_url: formData.thumbnail_url || formData.cover_url,
     };
 
-    const { error } = await supabase.from("stories").insert([payload]);
+    const { data: insertedStory, error } = await supabase
+      .from("stories")
+      .insert([payload])
+      .select("id")
+      .single();
 
-    if (!error) {
-      router.push("/stories");
-    } else {
-      alert("Error: " + error.message);
+    if (error) {
+      alert("Error creating story: " + error.message);
+      setLoading(false);
+      return;
     }
+
+    // Insert all selected category links into story_category_links junction table
+    if (insertedStory && selectedCategoryIds.length > 0) {
+      const linksPayload = selectedCategoryIds.map((catId) => ({
+        story_id: insertedStory.id,
+        category_id: catId,
+      }));
+
+      const { error: linkError } = await supabase
+        .from("story_category_links")
+        .insert(linksPayload);
+
+      if (linkError) {
+        console.error("Error linking categories:", linkError);
+      }
+    }
+
+    router.push("/stories");
     setLoading(false);
   };
 
@@ -79,22 +107,39 @@ export default function NewStory() {
                 placeholder="e.g. kanha ke aane ki khabar"
               />
             </div>
+
             <div className="grid gap-2">
-              <Label htmlFor="category">Category</Label>
-              <select
-                id="category"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={formData.category_id}
-                onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-              >
-                <option value="">Select a Category</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.title}
-                  </option>
-                ))}
-              </select>
+              <Label>Categories (Select Multiple)</Label>
+              {categories.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Loading categories...</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 border rounded-md bg-gray-50/50 max-h-48 overflow-y-auto">
+                  {categories.map((c) => {
+                    const isSelected = selectedCategoryIds.includes(c.id);
+                    return (
+                      <label
+                        key={c.id}
+                        onClick={() => handleCategoryToggle(c.id)}
+                        className={`flex items-center gap-2 p-2 rounded-md border text-sm cursor-pointer transition-colors ${
+                          isSelected
+                            ? "bg-blue-50 border-blue-500 font-medium text-blue-900"
+                            : "bg-white border-gray-200 hover:bg-gray-50 text-gray-700"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {}} // handled by parent label onClick
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="truncate">{c.title}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
               <Input
