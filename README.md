@@ -9,13 +9,14 @@ A modern, full-featured Content Management System (CMS) admin dashboard for mana
 - **Authentication**: Secure Login and Registration using Supabase Authentication.
 - **Story Management**:
   - Add, edit, and delete stories.
-  - Multi-category assignment for stories via junction mappings.
+  - **Multi-Category Assignment**: Select and link multiple categories per story via junction table mappings (`story_category_links`).
   - Cover and thumbnail image management stored in Supabase Storage (`story-assets`).
-  - Automatic calculation of total pages and total audio duration.
+  - Automatic calculation of total pages and total audio duration across all episodes.
 - **Episode & Audio Management**:
-  - Grouped episode management per story.
-  - Episode cover images and audio uploads to structured folders (`stories/<story_name>/images` and `stories/<story_name>/audio`).
-  - **Automatic MP3 Audio Duration Extraction**: Auto-detects audio duration in seconds on file upload.
+  - **Full Episode & Title Editing**: Edit episode titles, descriptions, episode numbers, free preview flags, audio files, images, and scripts at `/episodes/[id]/edit`.
+  - **Grouped Episode View**: Interactive accordion view of episodes grouped by story with linked story thumbnails and episode cover artwork.
+  - Episode cover images and audio uploads saved into organized storage paths (`stories/<story_name>/images` and `stories/<story_name>/audio`).
+  - **Automatic MP3 Audio Duration Extraction**: Auto-detects audio duration in seconds upon uploading new audio files.
   - Built-in inline audio preview player.
 - **Category Management**: Create and organize story categories.
 
@@ -145,4 +146,4 @@ To run the application continuously on a VPS server using **PM2**:
 - `stories`: Stores story metadata (title, description, cover_url, thumbnail_url, duration_seconds, total_pages, etc.).
 - `story_categories`: Stores category names.
 - `story_category_links`: Junction table mapping stories to multiple categories (`story_id`, `category_id`).
-- `episodes`: Stores page/episode entries linked to a story (`story_id`, `episode_number`, `title`, `audio_url`, `image_url`, `duration_seconds`).
+- `episodes`: Stores page/episode entries linked to a story (`story_id`, `episode_number`, `title`, `audio_url`, `image_url`, `duration_seconds`, `hindi_script`, `english_script`).

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, ChevronDown, ChevronRight, BookOpen, Music, Image as ImageIcon } from "lucide-react";
+import { Plus, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Music, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 
 interface GroupedStory {
@@ -218,13 +218,20 @@ export default function EpisodesPage() {
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={(e) => handleDelete(episode.id, e)}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-600" />
-                              </Button>
+                              <div className="flex justify-end gap-2">
+                                <Link href={`/episodes/${episode.id}/edit`}>
+                                  <Button variant="outline" size="icon">
+                                    <Pencil className="h-4 w-4 text-blue-600" />
+                                  </Button>
+                                </Link>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={(e) => handleDelete(episode.id, e)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-600" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
