@@ -1,36 +1,148 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Audiobook & Story CMS Admin Dashboard
 
-## Getting Started
+A modern, full-featured Content Management System (CMS) admin dashboard for managing audiobooks, stories, episodes, audio assets, and categories. Built with **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS**, and **Supabase (Auth, Database, Storage)**.
 
-First, run the development server:
+---
+
+## 🚀 Features
+
+- **Authentication**: Secure Login and Registration using Supabase Authentication.
+- **Story Management**:
+  - Add, edit, and delete stories.
+  - Multi-category assignment for stories via junction mappings.
+  - Cover and thumbnail image management stored in Supabase Storage (`story-assets`).
+  - Automatic calculation of total pages and total audio duration.
+- **Episode & Audio Management**:
+  - Grouped episode management per story.
+  - Episode cover images and audio uploads to structured folders (`stories/<story_name>/images` and `stories/<story_name>/audio`).
+  - **Automatic MP3 Audio Duration Extraction**: Auto-detects audio duration in seconds on file upload.
+  - Built-in inline audio preview player.
+- **Category Management**: Create and organize story categories.
+
+---
+
+## 📋 Prerequisites
+
+Before running or deploying this application, ensure you have:
+
+- **Node.js**: v18.0.0 or v20+ installed.
+- **npm** (or yarn / pnpm / bun).
+- A **Supabase** project set up with:
+  - Storage Bucket: `story-assets` (Public bucket)
+  - Tables: `stories`, `story_categories`, `story_category_links`, `episodes`
+
+---
+
+## 🔑 Environment Variables Setup
+
+Create a `.env.local` file in the root directory of the project. You can copy the provided `.env.example` template:
+
+```bash
+cp .env.example .env.local
+```
+
+### Required Environment Variables
+
+| Variable Key | Description | Example Value |
+| :--- | :--- | :--- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase Project API URL | `https://your-project.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase Public Anonymous API Key | `eyJhbGciOiJIUzI1NiIsInR...` |
+| `JWT_SECRET` | Secret key used for session/JWT verification | `random_32_byte_secret_key` |
+
+---
+
+## 🛠️ Installation & Setup
+
+1. **Clone the Repository**:
+   ```bash
+   git clone <your-repository-url>
+   cd <your-repository-directory>
+   ```
+
+2. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Configure Environment Variables**:
+   Create `.env.local` and fill in your Supabase credentials as described above.
+
+---
+
+## 🏃 Running the Application
+
+### 1. Development Mode
+
+Run the local Next.js development server with hot-reloading:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser to view the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 2. Production Build
 
-## Learn More
+Build and start the application locally in production mode:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# Compile and build Next.js production bundle
+npm run build
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Start the production server
+npm start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+### 3. Deploying & Running on VPS (using PM2)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+To run the application continuously on a VPS server using **PM2**:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Install PM2 globally** (if not already installed):
+   ```bash
+   npm install -g pm2
+   ```
+
+2. **Build the Application**:
+   ```bash
+   npm run build
+   ```
+
+3. **Start with PM2**:
+   ```bash
+   pm2 start npm --name "boopi-admin-cms" -- start
+   ```
+
+4. **Useful PM2 Commands**:
+   ```bash
+   # Check running status
+   pm2 status
+
+   # View live logs
+   pm2 logs boopi-admin-cms --lines 50
+
+   # Restart application after pulling updates
+   pm2 restart boopi-admin-cms
+
+   # Save PM2 process list to start automatically on reboot
+   pm2 save
+   pm2 startup
+   ```
+
+---
+
+## 🗄️ Database & Storage Structure
+
+### Supabase Storage Bucket
+- **Bucket Name**: `story-assets` (Public)
+  - Layout: `stories/<story_title>/images/<file>`
+  - Layout: `stories/<story_title>/audio/<file>`
+
+### Main Database Tables
+- `stories`: Stores story metadata (title, description, cover_url, thumbnail_url, duration_seconds, total_pages, etc.).
+- `story_categories`: Stores category names.
+- `story_category_links`: Junction table mapping stories to multiple categories (`story_id`, `category_id`).
+- `episodes`: Stores page/episode entries linked to a story (`story_id`, `episode_number`, `title`, `audio_url`, `image_url`, `duration_seconds`).
