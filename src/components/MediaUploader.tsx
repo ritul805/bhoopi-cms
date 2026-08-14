@@ -8,11 +8,12 @@ import { Loader2 } from "lucide-react";
 interface MediaUploaderProps {
   bucket: string;
   folder?: string;
+  fileName?: string | ((fileExtension: string) => string);
   onUploadSuccess: (url: string, durationSeconds?: number) => void;
   accept?: string;
 }
 
-export function MediaUploader({ bucket, folder = "uploads", onUploadSuccess, accept = "image/*" }: MediaUploaderProps) {
+export function MediaUploader({ bucket, folder = "uploads", fileName, onUploadSuccess, accept = "image/*" }: MediaUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,8 +43,11 @@ export function MediaUploader({ bucket, folder = "uploads", onUploadSuccess, acc
       }
 
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-      const filePath = `${folder}/${fileName}`;
+      const uploadName =
+        typeof fileName === "function"
+          ? fileName(fileExt || "")
+          : fileName || `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+      const filePath = `${folder}/${uploadName}`;
 
       const { error: uploadError } = await supabase.storage
         .from(bucket)

@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MediaUploader } from "@/components/MediaUploader";
+import { supabase } from "@/lib/supabase";
+import {
+  episodeAudioAssetName,
+  episodeAudioFolder,
+  episodeImageAssetName,
+  episodeImageFolder,
+  STORY_ASSETS_BUCKET,
+} from "@/lib/storagePaths";
 
 export default function NewEpisode() {
   const router = useRouter();
@@ -28,166 +36,185 @@ export default function NewEpisode() {
 
   useEffect(() => {
     const fetchStories = async () => {
-      const { data } = await supabase.from("stories").select("id, title");
-      if (data) setStories(data);
+      const { data, error } = await supabase
+        .from("stories")
+        .select("id, title, story_cards(id, title)")
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        alert("Could not load stories: " + error.message);
+        return;
+      }
+      setStories(data || []);
     };
     fetchStories();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const selectedStory = useMemo(
+    () => stories.find((story) => story.id === formData.story_id),
+    [formData.story_id, stories]
+  );
+
+  const selectedCardTitle = selectedStory?.story_cards?.title || "";
+  const selectedStoryTitle = selectedStory?.title || "";
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!formData.image_url || !formData.audio_url) {
+      alert("Please upload both episode image and episode audio before saving.");
+      return;
+    }
+
     setLoading(true);
 
-    const { error } = await supabase.from("episodes").insert([formData]);
+    const { error } = await supabase.from("episodes").insert([
+      {
+        story_id: formData.story_id,
+        episode_number: formData.episode_number,
+        title: formData.title.trim(),
+        image_url: formData.image_url,
+        audio_url: formData.audio_url,
+        duration_seconds: formData.duration_seconds || 0,
+      },
+    ]);
 
-    if (!error) {
-      if (formData.story_id) {
-        const { data: epData } = await supabase
-          .from("episodes")
-          .select("duration_seconds")
-          .eq("story_id", formData.story_id);
-        
-        if (epData) {
-          const totalPages = epData.length;
-          const totalDuration = epData.reduce((acc, curr) => acc + (curr.duration_seconds || 0), 0);
-          await supabase
-            .from("stories")
-            .update({ total_pages: totalPages, duration_seconds: totalDuration })
-            .eq("id", formData.story_id);
-        }
+    if (!error && formData.story_id) {
+      const { data: epData } = await supabase
+        .from("episodes")
+        .select("duration_seconds")
+        .eq("story_id", formData.story_id);
+
+      if (epData) {
+        const totalDuration = epData.reduce(
+          (acc, curr) => acc + (curr.duration_seconds || 0),
+          0
+        );
+        await supabase
+          .from("stories")
+          .update({ duration_seconds: totalDuration })
+          .eq("id", formData.story_id);
       }
-      router.push("/episodes");
-    } else {
-      alert("Error: " + error.message);
     }
+
     setLoading(false);
+    if (error) {
+      alert("Error uploading episode: " + error.message);
+      return;
+    }
+
+    router.push("/episodes");
   };
 
-  const getAudioFolder = () => {
-    const selectedStory = stories.find(s => s.id === formData.story_id);
-    if (!selectedStory || !selectedStory.title) return "stories/audio";
-    return `stories/${selectedStory.title}/audio`;
-  };
-
-  const getImageFolder = () => {
-    const selectedStory = stories.find(s => s.id === formData.story_id);
-    if (!selectedStory || !selectedStory.title) return "stories/images";
-    return `stories/${selectedStory.title}/images`;
-  };
+  const canUploadMedia = selectedCardTitle && selectedStoryTitle;
 
   return (
-    <div className="flex flex-col gap-6 max-w-2xl">
-      <h1 className="text-3xl font-bold tracking-tight">New Episode</h1>
-
+    <div className="flex max-w-2xl flex-col gap-6">
+      <h1 className="text-3xl font-bold tracking-tight">Upload Episode</h1>
       <Card>
         <CardHeader>
-          <CardTitle>Episode Details</CardTitle>
+          <CardTitle>Playable Episode</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-6">
             <div className="grid gap-2">
-              <Label htmlFor="story">Story</Label>
+              <Label htmlFor="story">Story Inside Card</Label>
               <select
                 id="story"
                 required
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={formData.story_id}
-                onChange={(e) => setFormData({ ...formData, story_id: e.target.value })}
+                onChange={(event) => setFormData({ ...formData, story_id: event.target.value })}
               >
-                <option value="" disabled>Select a story...</option>
-                {stories.map(s => (
-                  <option key={s.id} value={s.id}>{s.title}</option>
+                <option value="">Select child story...</option>
+                {stories.map((story) => (
+                  <option key={story.id} value={story.id}>
+                    {story.story_cards?.title || "No Card"} / {story.title}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">Episode Title</Label>
               <Input
                 id="title"
                 required
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(event) => setFormData({ ...formData, title: event.target.value })}
               />
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="episode_number">Episode Number</Label>
                 <Input
                   id="episode_number"
                   type="number"
+                  min="1"
                   required
                   value={formData.episode_number}
-                  onChange={(e) => setFormData({ ...formData, episode_number: parseInt(e.target.value) || 1 })}
+                  onChange={(event) =>
+                    setFormData({
+                      ...formData,
+                      episode_number: parseInt(event.target.value, 10) || 1,
+                    })
+                  }
                 />
               </div>
-
               <div className="grid gap-2">
                 <Label htmlFor="duration_seconds">Duration (seconds)</Label>
                 <Input
                   id="duration_seconds"
                   type="number"
                   value={formData.duration_seconds}
-                  onChange={(e) => setFormData({ ...formData, duration_seconds: parseInt(e.target.value) || 0 })}
+                  onChange={(event) =>
+                    setFormData({
+                      ...formData,
+                      duration_seconds: parseInt(event.target.value, 10) || 0,
+                    })
+                  }
                 />
               </div>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input 
-                type="checkbox" 
-                id="is_preview"
-                checked={formData.is_preview}
-                onChange={(e) => setFormData({ ...formData, is_preview: e.target.checked })}
-              />
-              <Label htmlFor="is_preview">Is Preview</Label>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Audio File</Label>
-              {!formData.story_id ? (
-                <p className="text-sm text-amber-600">Please select a Story first to upload the audio to the correct folder.</p>
+              <Label>Episode Image</Label>
+              {!canUploadMedia ? (
+                <p className="text-sm text-amber-600">Select a child story first.</p>
               ) : (
                 <MediaUploader
-                  bucket="story-assets"
-                  folder={getAudioFolder()}
-                  accept="audio/*"
-                  onUploadSuccess={(url, durationSeconds) => setFormData((prev) => ({
-                    ...prev,
-                    audio_url: url,
-                    duration_seconds: durationSeconds && durationSeconds > 0 ? durationSeconds : prev.duration_seconds
-                  }))}
-                />
-              )}
-              {formData.audio_url && (
-                <p className="text-sm text-green-600 mt-2">Audio uploaded successfully!</p>
-              )}
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Image File</Label>
-              {!formData.story_id ? (
-                <p className="text-sm text-amber-600">Please select a Story first to upload the image to the correct folder.</p>
-              ) : (
-                <MediaUploader
-                  bucket="story-assets"
-                  folder={getImageFolder()}
+                  bucket={STORY_ASSETS_BUCKET}
+                  folder={episodeImageFolder(selectedCardTitle, selectedStoryTitle)}
+                  fileName={(extension) => episodeImageAssetName(formData.episode_number, extension || "webp")}
                   accept="image/*"
                   onUploadSuccess={(url) => setFormData({ ...formData, image_url: url })}
                 />
               )}
-              {formData.image_url && (
-                <p className="text-sm text-green-600 mt-2">Image uploaded successfully!</p>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Episode Audio</Label>
+              {!canUploadMedia ? (
+                <p className="text-sm text-amber-600">Select a child story first.</p>
+              ) : (
+                <MediaUploader
+                  bucket={STORY_ASSETS_BUCKET}
+                  folder={episodeAudioFolder(selectedCardTitle, selectedStoryTitle)}
+                  fileName={(extension) => episodeAudioAssetName(formData.episode_number, extension || "mp3")}
+                  accept="audio/*"
+                  onUploadSuccess={(url, durationSeconds) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      audio_url: url,
+                      duration_seconds:
+                        durationSeconds && durationSeconds > 0
+                          ? durationSeconds
+                          : prev.duration_seconds,
+                    }))
+                  }
+                />
               )}
             </div>
 
@@ -195,25 +222,19 @@ export default function NewEpisode() {
               <Label htmlFor="hindi_script">Hindi Script</Label>
               <textarea
                 id="hindi_script"
-                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={formData.hindi_script}
-                onChange={(e) => setFormData({ ...formData, hindi_script: e.target.value })}
+                onChange={(event) => setFormData({ ...formData, hindi_script: event.target.value })}
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="english_script">English Script</Label>
-              <textarea
-                id="english_script"
-                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={formData.english_script}
-                onChange={(e) => setFormData({ ...formData, english_script: e.target.value })}
-              />
-            </div>
-
-            <div className="flex justify-end gap-4 mt-4">
-              <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-              <Button type="submit" disabled={loading}>Save Episode</Button>
+            <div className="flex justify-end gap-4">
+              <Button type="button" variant="outline" onClick={() => router.back()}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving..." : "Save Episode"}
+              </Button>
             </div>
           </form>
         </CardContent>
