@@ -141,33 +141,26 @@ export default function EditStory() {
       return;
     }
 
-    // Remove old category links
-    const { error: deleteLinksError } = await supabase
-      .from("story_category_links")
-      .delete()
-      .eq("story_id", storyId);
-
-    if (deleteLinksError) {
-      console.error(
-        "Error removing old category links:",
-        deleteLinksError
-      );
-    }
-
-    // Add updated category links
-    if (selectedCategoryIds.length > 0) {
-      const linksPayload = selectedCategoryIds.map((categoryId) => ({
-        story_id: storyId,
-        category_id: categoryId,
-      }));
-
-      const { error: linkError } = await supabase
-        .from("story_category_links")
-        .insert(linksPayload);
-
-      if (linkError) {
-        console.error("Error updating category links:", linkError);
+    // Replace category links atomically. This used to be a DELETE followed by
+    // an INSERT; if the insert failed the story was left with no categories at
+    // all, and the failure was only logged to the console while the user was
+    // redirected as though the save had succeeded.
+    const { error: categoriesError } = await supabase.rpc(
+      "set_story_categories",
+      {
+        p_story_id: storyId,
+        p_category_ids: selectedCategoryIds,
       }
+    );
+
+    if (categoriesError) {
+      setSaving(false);
+      alert(
+        "The story details were saved, but its categories were not changed: " +
+          categoriesError.message +
+          "\n\nThe previous categories are still in place. Please try again."
+      );
+      return;
     }
 
     router.push("/stories");

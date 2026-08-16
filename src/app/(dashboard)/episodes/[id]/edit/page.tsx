@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { recalculateStoryTotalsFor } from "@/lib/storyTotals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,11 @@ export default function EditEpisode({ params }: { params: Promise<{ id: string }
   const [stories, setStories] = useState<any[]>([]);
   const [fetching, setFetching] = useState(true);
   const [loading, setLoading] = useState(false);
+  // The story this episode belonged to when the form loaded. If the user
+  // reassigns the episode, this story loses an episode and its totals must be
+  // recalculated too — updating only the destination leaves the origin
+  // permanently overstated.
+  const [originalStoryId, setOriginalStoryId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     story_id: "",
@@ -42,6 +48,7 @@ export default function EditEpisode({ params }: { params: Promise<{ id: string }
 
       if (episodeRes.data) {
         const ep = episodeRes.data;
+        setOriginalStoryId(ep.story_id || null);
         setFormData({
           title: ep.title || "",
           story_id: ep.story_id || "",
@@ -74,27 +81,30 @@ export default function EditEpisode({ params }: { params: Promise<{ id: string }
       .update(formData)
       .eq("id", episodeId);
 
-    if (!error) {
-      if (formData.story_id) {
-        const { data: epData } = await supabase
-          .from("episodes")
-          .select("duration_seconds")
-          .eq("story_id", formData.story_id);
-        
-        if (epData) {
-          const totalPages = epData.length;
-          const totalDuration = epData.reduce((acc, curr) => acc + (curr.duration_seconds || 0), 0);
-          await supabase
-            .from("stories")
-            .update({ total_pages: totalPages, duration_seconds: totalDuration })
-            .eq("id", formData.story_id);
-        }
-      }
-      router.push("/episodes");
-    } else {
+    if (error) {
       alert("Error updating episode: " + error.message);
+      setLoading(false);
+      return;
     }
+
+    // Recalculate the destination story and, if the episode was moved, the
+    // story it came from as well.
+    const totals = await recalculateStoryTotalsFor([
+      formData.story_id,
+      originalStoryId,
+    ]);
+
     setLoading(false);
+
+    if (!totals.ok) {
+      alert(
+        "Episode saved, but story totals could not be updated: " +
+          totals.errors.join("; ") +
+          "\n\nThe counts shown may be wrong until the next edit."
+      );
+    }
+
+    router.push("/episodes");
   };
 
   const getAudioFolder = () => {

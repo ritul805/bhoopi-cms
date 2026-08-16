@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MediaUploader } from "@/components/MediaUploader";
 import { supabase } from "@/lib/supabase";
+import { recalculateStoryTotals } from "@/lib/storyTotals";
 import {
   episodeAudioAssetName,
   episodeAudioFolder,
@@ -80,28 +81,24 @@ export default function NewEpisode() {
       },
     ]);
 
-    if (!error && formData.story_id) {
-      const { data: epData } = await supabase
-        .from("episodes")
-        .select("duration_seconds")
-        .eq("story_id", formData.story_id);
-
-      if (epData) {
-        const totalDuration = epData.reduce(
-          (acc, curr) => acc + (curr.duration_seconds || 0),
-          0
-        );
-        await supabase
-          .from("stories")
-          .update({ duration_seconds: totalDuration })
-          .eq("id", formData.story_id);
-      }
-    }
-
-    setLoading(false);
     if (error) {
+      setLoading(false);
       alert("Error uploading episode: " + error.message);
       return;
+    }
+
+    // Recompute from the episodes table. The earlier version updated
+    // duration_seconds but not total_pages, so page counts never moved.
+    const totals = await recalculateStoryTotals(formData.story_id);
+
+    setLoading(false);
+
+    if (!totals.ok) {
+      alert(
+        "Episode saved, but the story totals could not be updated: " +
+          totals.error +
+          "\n\nThe counts shown for this story may be wrong until the next edit."
+      );
     }
 
     router.push("/episodes");

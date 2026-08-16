@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { recalculateStoryTotals } from "@/lib/storyTotals";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Pencil, ChevronDown, ChevronRight, BookOpen, Music, Image as ImageIcon } from "lucide-react";
@@ -74,10 +75,28 @@ export default function EpisodesPage() {
     }));
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, storyId: string | null, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this episode?")) return;
-    await supabase.from("episodes").delete().eq("id", id);
+
+    const { error } = await supabase.from("episodes").delete().eq("id", id);
+
+    if (error) {
+      alert("Error deleting episode: " + error.message);
+      return;
+    }
+
+    // The story now has one fewer episode, so its page count and total
+    // duration are stale until recalculated.
+    const totals = await recalculateStoryTotals(storyId);
+    if (!totals.ok) {
+      alert(
+        "Episode deleted, but the story totals could not be updated: " +
+          totals.error +
+          "\n\nThe counts shown for this story may be wrong until the next edit."
+      );
+    }
+
     fetchEpisodes();
   };
 
@@ -227,7 +246,7 @@ export default function EpisodesPage() {
                                 <Button
                                   variant="outline"
                                   size="icon"
-                                  onClick={(e) => handleDelete(episode.id, e)}
+                                  onClick={(e) => handleDelete(episode.id, episode.story_id, e)}
                                 >
                                   <Trash2 className="h-4 w-4 text-red-600" />
                                 </Button>

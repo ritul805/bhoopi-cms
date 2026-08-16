@@ -38,7 +38,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 next.config.js
-.env
-.env.local
-.env*.local
 install.log
+
+# env files — never commit real values
+.env
+.env.*
+!.env.example
+
+# local-only maintenance output
+scripts/db/*.local.js

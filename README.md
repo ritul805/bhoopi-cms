@@ -147,3 +147,44 @@ To run the application continuously on a VPS server using **PM2**:
 - `story_categories`: Stores category names.
 - `story_category_links`: Junction table mapping stories to multiple categories (`story_id`, `category_id`).
 - `episodes`: Stores page/episode entries linked to a story (`story_id`, `episode_number`, `title`, `audio_url`, `image_url`, `duration_seconds`, `hindi_script`, `english_script`).
+
+---
+
+## 🛠️ Database Maintenance Scripts
+
+Located in `scripts/db/`. These talk directly to Postgres and are **not** part of
+the running app — they exist for one-off inspection and cleanup.
+
+Both read the connection string from the `DATABASE_URL` environment variable and
+refuse to run without it. Never hardcode a connection string into these files.
+
+```bash
+# Load credentials from your untracked .env.local
+set -a && source .env.local && set +a
+
+# List every table in the public schema (read-only)
+npm run db:list
+
+# Preview dropping specific tables — makes no changes
+npm run db:drop -- legacy_table_a legacy_table_b
+
+# Actually drop them
+npm run db:drop -- legacy_table_a --confirm
+```
+
+### Safety behaviour
+
+| Guard | Effect |
+| :--- | :--- |
+| `DATABASE_URL` required | Script exits rather than falling back to a default |
+| Password redaction | Connection strings are masked before being logged |
+| Explicit naming | Nothing is dropped unless named on the command line |
+| Existence check | Names are matched against `pg_tables`; typos drop nothing |
+| Protected list | Core CMS tables are refused outright |
+| Dry run default | `--confirm` is required to execute |
+| Transactional | All drops run in one transaction and roll back on error |
+
+> **Note:** `scripts/db/drop-tables.js` replaces an earlier `query_drop.js` that
+> dropped every table *not* on a hardcoded allowlist. That design was fail-open —
+> any table added after the script was written would be deleted on the next run.
+> The current script is fail-closed: it only touches tables you name.
