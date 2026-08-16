@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Book, LayoutDashboard, ListMusic, LogOut, Tags } from "lucide-react";
+import { Book, Layers, LayoutDashboard, ListMusic, LogOut, Tags } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
@@ -12,8 +12,9 @@ export function Sidebar() {
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Stories", href: "/stories", icon: Book },
-    { name: "Episodes", href: "/episodes", icon: ListMusic },
+    { name: "Story Cards", href: "/story-cards", icon: Layers },
+    { name: "Stories Inside Cards", href: "/stories", icon: Book },
+    { name: "Upload Episodes", href: "/episodes", icon: ListMusic },
     { name: "Categories", href: "/categories", icon: Tags },
   ];
 

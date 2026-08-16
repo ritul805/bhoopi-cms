@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { isAllowedAdminEmail } from "@/lib/authConfig";
 import { Sidebar } from "@/components/Sidebar";
 
 export default function DashboardLayout({
@@ -16,7 +17,8 @@ export default function DashboardLayout({
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!session || !isAllowedAdminEmail(session.user.email)) {
+        await supabase.auth.signOut();
         router.push("/login");
       } else {
         setLoading(false);

@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { isAllowedAdminEmail } from './lib/authConfig';
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -31,22 +32,23 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protect /dashboard routes (any route except /login or /register)
-  const isDashboardRoute = 
-    request.nextUrl.pathname.startsWith('/episodes') ||
-    request.nextUrl.pathname.startsWith('/stories') ||
-    request.nextUrl.pathname.startsWith('/categories') ||
-    request.nextUrl.pathname === '/';
+  const pathname = request.nextUrl.pathname;
+  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register');
+  const isProtectedRoute = !isAuthRoute;
+  const isAllowedUser = isAllowedAdminEmail(user?.email);
 
-  if (isDashboardRoute && !user) {
+  if (isProtectedRoute && !isAllowedUser) {
+    if (user) {
+      await supabase.auth.signOut();
+    }
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  if ((request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register')) && user) {
+  if (isAuthRoute && isAllowedUser) {
     const url = request.nextUrl.clone();
-    url.pathname = '/episodes';
+    url.pathname = '/';
     return NextResponse.redirect(url);
   }
 

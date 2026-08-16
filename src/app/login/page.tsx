@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { ALLOWED_ADMIN_EMAIL, isAllowedAdminEmail } from "@/lib/authConfig";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,13 +21,22 @@ export default function Login() {
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    if (!isAllowedAdminEmail(email)) {
+      setError(`Only ${ALLOWED_ADMIN_EMAIL} can access this CMS.`);
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
       setError(error.message);
+    } else if (!isAllowedAdminEmail(data.user?.email)) {
+      await supabase.auth.signOut();
+      setError(`Only ${ALLOWED_ADMIN_EMAIL} can access this CMS.`);
     } else {
       router.push("/");
       router.refresh();
@@ -51,7 +60,7 @@ export default function Login() {
               <Input
                 id="email"
                 type="email"
-                placeholder="m@example.com"
+                placeholder={ALLOWED_ADMIN_EMAIL}
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -71,12 +80,9 @@ export default function Login() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Logging in..." : "Login"}
             </Button>
-            <div className="text-center text-sm text-gray-500 mt-2">
-              Don't have an account?{" "}
-              <Link href="/register" className="text-blue-600 hover:underline">
-                Register here
-              </Link>
-            </div>
+            <p className="text-center text-sm text-gray-500 mt-2">
+              Access is restricted to {ALLOWED_ADMIN_EMAIL}.
+            </p>
           </form>
         </CardContent>
       </Card>
