@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Book, Layers, LayoutDashboard, ListMusic, LogOut, Tags } from "lucide-react";
+import { Book, Layers, LayoutDashboard, ListMusic, LogOut, Palette, Tags } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
@@ -15,6 +15,7 @@ export function Sidebar() {
     { name: "Story Cards", href: "/story-cards", icon: Layers },
     { name: "Stories Inside Cards", href: "/stories", icon: Book },
     { name: "Upload Episodes", href: "/episodes", icon: ListMusic },
+    { name: "Design System", href: "/design-system", icon: Palette },
     { name: "Categories", href: "/categories", icon: Tags },
   ];
 
