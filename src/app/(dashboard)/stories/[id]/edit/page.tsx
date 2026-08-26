@@ -15,6 +15,10 @@ import {
 } from "@/components/ui/card";
 
 import { MediaUploader } from "@/components/MediaUploader";
+import {
+  storyInsideCardThumbnailFolder,
+  STORY_ASSETS_BUCKET,
+} from "@/lib/storagePaths";
 
 export default function EditStory() {
   const router = useRouter();
@@ -29,6 +33,7 @@ export default function EditStory() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [parentCardTitle, setParentCardTitle] = useState("");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -51,7 +56,7 @@ export default function EditStory() {
       // Fetch story
       const { data: story, error: storyError } = await supabase
         .from("stories")
-        .select("*")
+        .select("*, story_cards(id, title)")
         .eq("id", storyId)
         .single();
 
@@ -103,6 +108,7 @@ export default function EditStory() {
         is_premium: story.is_premium || false,
         is_featured: story.is_featured || false,
       });
+      setParentCardTitle(story.story_cards?.title || "");
 
       setLoading(false);
     };
@@ -177,9 +183,9 @@ export default function EditStory() {
   };
 
   const getStoryUploadFolder = () => {
-    if (!formData.title) return "stories";
+    if (!parentCardTitle || !formData.title) return "stories";
 
-    return `stories/${formData.title}/images`;
+    return storyInsideCardThumbnailFolder(parentCardTitle, formData.title);
   };
 
   if (loading) {
@@ -389,7 +395,7 @@ export default function EditStory() {
               <Label>Cover Image</Label>
 
               <MediaUploader
-                bucket="story-assets"
+                bucket={STORY_ASSETS_BUCKET}
                 folder={getStoryUploadFolder()}
                 onUploadSuccess={(url) =>
                   setFormData({

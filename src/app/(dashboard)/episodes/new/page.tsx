@@ -11,9 +11,9 @@ import { MediaUploader } from "@/components/MediaUploader";
 import { supabase } from "@/lib/supabase";
 import {
   episodeAudioAssetName,
-  episodeAudioFolderById,
+  episodeAudioFolder,
   episodeImageAssetName,
-  episodeImageFolderById,
+  episodeImageFolder,
   STORY_ASSETS_BUCKET,
 } from "@/lib/storagePaths";
 
@@ -56,8 +56,8 @@ export default function NewEpisode() {
     [formData.story_id, stories]
   );
 
-  const selectedCardId = selectedStory?.story_cards?.id || "";
-  const selectedStoryId = selectedStory?.id || "";
+  const selectedCardTitle = selectedStory?.story_cards?.title || "";
+  const selectedStoryTitle = selectedStory?.title || "";
 
   const resetUploadedMedia = (nextFormData: typeof formData) => ({
     ...nextFormData,
@@ -114,7 +114,7 @@ export default function NewEpisode() {
     router.push("/episodes");
   };
 
-  const canUploadMedia = selectedCardId && selectedStoryId;
+  const canUploadMedia = selectedCardTitle && selectedStoryTitle;
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -197,7 +197,7 @@ export default function NewEpisode() {
               ) : (
                 <MediaUploader
                   bucket={STORY_ASSETS_BUCKET}
-                  folder={episodeImageFolderById(selectedCardId, selectedStoryId)}
+                  folder={episodeImageFolder(selectedCardTitle, selectedStoryTitle)}
                   fileName={(extension) => episodeImageAssetName(formData.episode_number, extension || "webp")}
                   accept="image/*"
                   onUploadSuccess={(url) => setFormData({ ...formData, image_url: url })}
@@ -212,7 +212,7 @@ export default function NewEpisode() {
               ) : (
                 <MediaUploader
                   bucket={STORY_ASSETS_BUCKET}
-                  folder={episodeAudioFolderById(selectedCardId, selectedStoryId)}
+                  folder={episodeAudioFolder(selectedCardTitle, selectedStoryTitle)}
                   fileName={(extension) => episodeAudioAssetName(formData.episode_number, extension || "mp3")}
                   accept="audio/*"
                   onUploadSuccess={(url, durationSeconds) =>

@@ -10,9 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MediaUploader } from "@/components/MediaUploader";
 import {
   episodeAudioAssetName,
-  episodeAudioFolderById,
+  episodeAudioFolder,
   episodeImageAssetName,
-  episodeImageFolderById,
+  episodeImageFolder,
   STORY_ASSETS_BUCKET,
 } from "@/lib/storagePaths";
 
@@ -106,14 +106,14 @@ export default function EditEpisode({ params }: { params: Promise<{ id: string }
 
   const getAudioFolder = () => {
     const selectedStory = stories.find(s => s.id === formData.story_id);
-    if (!selectedStory?.id || !selectedStory?.story_cards?.id) return "stories/audio";
-    return episodeAudioFolderById(selectedStory.story_cards.id, selectedStory.id);
+    if (!selectedStory?.title || !selectedStory?.story_cards?.title) return "stories/audio";
+    return episodeAudioFolder(selectedStory.story_cards.title, selectedStory.title);
   };
 
   const getImageFolder = () => {
     const selectedStory = stories.find(s => s.id === formData.story_id);
-    if (!selectedStory?.id || !selectedStory?.story_cards?.id) return "stories/images";
-    return episodeImageFolderById(selectedStory.story_cards.id, selectedStory.id);
+    if (!selectedStory?.title || !selectedStory?.story_cards?.title) return "stories/images";
+    return episodeImageFolder(selectedStory.story_cards.title, selectedStory.title);
   };
 
   if (fetching) {
