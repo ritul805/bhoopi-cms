@@ -76,6 +76,28 @@ export default function EditEpisode({ params }: { params: Promise<{ id: string }
     e.preventDefault();
     setLoading(true);
 
+    const { data: existingEpisode, error: duplicateCheckError } = await supabase
+      .from("episodes")
+      .select("id")
+      .eq("story_id", formData.story_id)
+      .eq("episode_number", formData.episode_number)
+      .neq("id", episodeId)
+      .limit(1);
+
+    if (duplicateCheckError) {
+      setLoading(false);
+      alert("Could not check existing episodes: " + duplicateCheckError.message);
+      return;
+    }
+
+    if (existingEpisode && existingEpisode.length > 0) {
+      setLoading(false);
+      alert(
+        `Episode number ${formData.episode_number} already exists for this story. Please use a different episode number.`
+      );
+      return;
+    }
+
     const { error } = await supabase
       .from("episodes")
       .update(formData)

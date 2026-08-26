@@ -66,6 +66,29 @@ export default function NewEpisode() {
     duration_seconds: 0,
   });
 
+  useEffect(() => {
+    const setNextEpisodeNumber = async () => {
+      if (!formData.story_id) return;
+
+      const { data } = await supabase
+        .from("episodes")
+        .select("episode_number")
+        .eq("story_id", formData.story_id)
+        .order("episode_number", { ascending: false })
+        .limit(1);
+
+      const nextEpisodeNumber = (data?.[0]?.episode_number || 0) + 1;
+      setFormData((prev) =>
+        resetUploadedMedia({
+          ...prev,
+          episode_number: nextEpisodeNumber,
+        })
+      );
+    };
+
+    setNextEpisodeNumber();
+  }, [formData.story_id]);
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
@@ -75,6 +98,27 @@ export default function NewEpisode() {
     }
 
     setLoading(true);
+
+    const { data: existingEpisode, error: duplicateCheckError } = await supabase
+      .from("episodes")
+      .select("id")
+      .eq("story_id", formData.story_id)
+      .eq("episode_number", formData.episode_number)
+      .limit(1);
+
+    if (duplicateCheckError) {
+      setLoading(false);
+      alert("Could not check existing episodes: " + duplicateCheckError.message);
+      return;
+    }
+
+    if (existingEpisode && existingEpisode.length > 0) {
+      setLoading(false);
+      alert(
+        `Episode number ${formData.episode_number} already exists for this story. Please use the next episode number.`
+      );
+      return;
+    }
 
     const { error } = await supabase.from("episodes").insert([
       {

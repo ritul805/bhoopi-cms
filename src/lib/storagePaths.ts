@@ -23,12 +23,20 @@ function safeExtension(extension: string) {
   return extension.replace(/^\./, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
 }
 
+function uniqueSuffix() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export function episodeImageAssetName(episodeNumber: number, extension: string) {
-  return `episode_image-${String(episodeNumber || 1).padStart(3, "0")}.${safeExtension(extension) || "webp"}`;
+  return `episode_image-${String(episodeNumber || 1).padStart(3, "0")}-${uniqueSuffix()}.${
+    safeExtension(extension) || "webp"
+  }`;
 }
 
 export function episodeAudioAssetName(episodeNumber: number, extension: string) {
-  return `episode_audio-${String(episodeNumber || 1).padStart(3, "0")}.${safeExtension(extension) || "mp3"}`;
+  return `episode_audio-${String(episodeNumber || 1).padStart(3, "0")}-${uniqueSuffix()}.${
+    safeExtension(extension) || "mp3"
+  }`;
 }
 
 export function storyCardFolder(cardTitle: string) {
