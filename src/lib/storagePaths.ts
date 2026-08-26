@@ -27,6 +27,10 @@ function uniqueSuffix() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+export function uniqueAssetName(baseName: string, extension: string) {
+  return `${baseName}-${uniqueSuffix()}.${safeExtension(extension) || "webp"}`;
+}
+
 export function episodeImageAssetName(episodeNumber: number, extension: string) {
   return `episode_image-${String(episodeNumber || 1).padStart(3, "0")}-${uniqueSuffix()}.${
     safeExtension(extension) || "webp"

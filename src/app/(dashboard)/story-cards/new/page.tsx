@@ -13,6 +13,7 @@ import {
   storyCardHeroBannerFolder,
   storyCardThumbnailFolder,
   STORY_ASSETS_BUCKET,
+  uniqueAssetName,
 } from "@/lib/storagePaths";
 
 export default function NewStoryCard() {
@@ -116,7 +117,7 @@ export default function NewStoryCard() {
                 <MediaUploader
                   bucket={STORY_ASSETS_BUCKET}
                   folder={storyCardThumbnailFolder(formData.title)}
-                  fileName={(extension) => `thumbnail.${extension || "webp"}`}
+                  fileName={(extension) => uniqueAssetName("thumbnail", extension || "webp")}
                   onUploadSuccess={(url) => setFormData({ ...formData, thumbnail_url: url })}
                 />
               )}
@@ -137,7 +138,7 @@ export default function NewStoryCard() {
                 <MediaUploader
                   bucket={STORY_ASSETS_BUCKET}
                   folder={storyCardHeroBannerFolder(formData.title)}
-                  fileName={(extension) => `hero_banner.${extension || "webp"}`}
+                  fileName={(extension) => uniqueAssetName("hero_banner", extension || "webp")}
                   onUploadSuccess={(url) => setFormData({ ...formData, hero_banner_url: url })}
                 />
               )}

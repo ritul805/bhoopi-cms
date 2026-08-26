@@ -12,6 +12,7 @@ import { supabase } from "@/lib/supabase";
 import {
   storyInsideCardThumbnailFolder,
   STORY_ASSETS_BUCKET,
+  uniqueAssetName,
 } from "@/lib/storagePaths";
 
 export default function NewStoryInsideCard() {
@@ -151,7 +152,7 @@ export default function NewStoryInsideCard() {
                 <MediaUploader
                   bucket={STORY_ASSETS_BUCKET}
                   folder={storyInsideCardThumbnailFolder(selectedCard.title, formData.title)}
-                  fileName={(extension) => `thumbnail.${extension || "webp"}`}
+                  fileName={(extension) => uniqueAssetName("thumbnail", extension || "webp")}
                   onUploadSuccess={(url) =>
                     setFormData({ ...formData, thumbnail_url: url, cover_url: formData.cover_url || url })
                   }
@@ -174,7 +175,7 @@ export default function NewStoryInsideCard() {
                 <MediaUploader
                   bucket={STORY_ASSETS_BUCKET}
                   folder={storyInsideCardThumbnailFolder(selectedCard.title, formData.title)}
-                  fileName={(extension) => `cover.${extension || "webp"}`}
+                  fileName={(extension) => uniqueAssetName("cover", extension || "webp")}
                   onUploadSuccess={(url) => setFormData({ ...formData, cover_url: url })}
                 />
               )}
