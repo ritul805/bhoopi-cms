@@ -8,6 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MediaUploader } from "@/components/MediaUploader";
+import {
+  episodeAudioAssetName,
+  episodeAudioFolder,
+  episodeImageAssetName,
+  episodeImageFolder,
+  STORY_ASSETS_BUCKET,
+} from "@/lib/storagePaths";
 
 export default function EditEpisode({ params }: { params: Promise<{ id: string }> }) {
   const { id: episodeId } = use(params);
@@ -32,7 +39,7 @@ export default function EditEpisode({ params }: { params: Promise<{ id: string }
     const fetchData = async () => {
       setFetching(true);
       const [storiesRes, episodeRes] = await Promise.all([
-        supabase.from("stories").select("id, title"),
+        supabase.from("stories").select("id, title, story_cards(id, title)"),
         supabase.from("episodes").select("*").eq("id", episodeId).single(),
       ]);
 
@@ -99,14 +106,14 @@ export default function EditEpisode({ params }: { params: Promise<{ id: string }
 
   const getAudioFolder = () => {
     const selectedStory = stories.find(s => s.id === formData.story_id);
-    if (!selectedStory || !selectedStory.title) return "stories/audio";
-    return `stories/${selectedStory.title}/audio`;
+    if (!selectedStory?.title || !selectedStory?.story_cards?.title) return "stories/audio";
+    return episodeAudioFolder(selectedStory.story_cards.title, selectedStory.title);
   };
 
   const getImageFolder = () => {
     const selectedStory = stories.find(s => s.id === formData.story_id);
-    if (!selectedStory || !selectedStory.title) return "stories/images";
-    return `stories/${selectedStory.title}/images`;
+    if (!selectedStory?.title || !selectedStory?.story_cards?.title) return "stories/images";
+    return episodeImageFolder(selectedStory.story_cards.title, selectedStory.title);
   };
 
   if (fetching) {
@@ -204,8 +211,9 @@ export default function EditEpisode({ params }: { params: Promise<{ id: string }
                 <p className="text-sm text-amber-600">Please select a Story first to upload the audio to the correct folder.</p>
               ) : (
                 <MediaUploader
-                  bucket="story-assets"
+                  bucket={STORY_ASSETS_BUCKET}
                   folder={getAudioFolder()}
+                  fileName={(extension) => episodeAudioAssetName(formData.episode_number, extension || "mp3")}
                   accept="audio/*"
                   onUploadSuccess={(url, durationSeconds) => setFormData((prev) => ({
                     ...prev,
@@ -228,8 +236,9 @@ export default function EditEpisode({ params }: { params: Promise<{ id: string }
                 <p className="text-sm text-amber-600">Please select a Story first to upload the image to the correct folder.</p>
               ) : (
                 <MediaUploader
-                  bucket="story-assets"
+                  bucket={STORY_ASSETS_BUCKET}
                   folder={getImageFolder()}
+                  fileName={(extension) => episodeImageAssetName(formData.episode_number, extension || "webp")}
                   accept="image/*"
                   onUploadSuccess={(url) => setFormData({ ...formData, image_url: url })}
                 />

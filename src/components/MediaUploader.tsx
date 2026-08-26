@@ -13,6 +13,15 @@ interface MediaUploaderProps {
   accept?: string;
 }
 
+function safePathPart(value: string) {
+  return value
+    .trim()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export function MediaUploader({ bucket, folder = "uploads", fileName, onUploadSuccess, accept = "image/*" }: MediaUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,11 +51,11 @@ export function MediaUploader({ bucket, folder = "uploads", fileName, onUploadSu
         }
       }
 
-      const fileExt = file.name.split('.').pop();
+      const fileExt = safePathPart(file.name.split('.').pop() || "");
       const uploadName =
         typeof fileName === "function"
           ? fileName(fileExt || "")
-          : fileName || `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+          : fileName || `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt || "bin"}`;
       const filePath = `${folder}/${uploadName}`;
 
       const { error: uploadError } = await supabase.storage
@@ -57,8 +66,8 @@ export function MediaUploader({ bucket, folder = "uploads", fileName, onUploadSu
 
       const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
       onUploadSuccess(data.publicUrl, detectedDuration);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
     }
