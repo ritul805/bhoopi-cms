@@ -11,9 +11,9 @@ import { MediaUploader } from "@/components/MediaUploader";
 import { supabase } from "@/lib/supabase";
 import {
   episodeAudioAssetName,
-  episodeAudioFolder,
+  episodeAudioFolderById,
   episodeImageAssetName,
-  episodeImageFolder,
+  episodeImageFolderById,
   STORY_ASSETS_BUCKET,
 } from "@/lib/storagePaths";
 
@@ -56,8 +56,15 @@ export default function NewEpisode() {
     [formData.story_id, stories]
   );
 
-  const selectedCardTitle = selectedStory?.story_cards?.title || "";
-  const selectedStoryTitle = selectedStory?.title || "";
+  const selectedCardId = selectedStory?.story_cards?.id || "";
+  const selectedStoryId = selectedStory?.id || "";
+
+  const resetUploadedMedia = (nextFormData: typeof formData) => ({
+    ...nextFormData,
+    audio_url: "",
+    image_url: "",
+    duration_seconds: 0,
+  });
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -107,7 +114,7 @@ export default function NewEpisode() {
     router.push("/episodes");
   };
 
-  const canUploadMedia = selectedCardTitle && selectedStoryTitle;
+  const canUploadMedia = selectedCardId && selectedStoryId;
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -125,7 +132,9 @@ export default function NewEpisode() {
                 required
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={formData.story_id}
-                onChange={(event) => setFormData({ ...formData, story_id: event.target.value })}
+                onChange={(event) =>
+                  setFormData(resetUploadedMedia({ ...formData, story_id: event.target.value }))
+                }
               >
                 <option value="">Select child story...</option>
                 {stories.map((story) => (
@@ -156,10 +165,12 @@ export default function NewEpisode() {
                   required
                   value={formData.episode_number}
                   onChange={(event) =>
-                    setFormData({
-                      ...formData,
-                      episode_number: parseInt(event.target.value, 10) || 1,
-                    })
+                    setFormData(
+                      resetUploadedMedia({
+                        ...formData,
+                        episode_number: parseInt(event.target.value, 10) || 1,
+                      })
+                    )
                   }
                 />
               </div>
@@ -186,7 +197,7 @@ export default function NewEpisode() {
               ) : (
                 <MediaUploader
                   bucket={STORY_ASSETS_BUCKET}
-                  folder={episodeImageFolder(selectedCardTitle, selectedStoryTitle)}
+                  folder={episodeImageFolderById(selectedCardId, selectedStoryId)}
                   fileName={(extension) => episodeImageAssetName(formData.episode_number, extension || "webp")}
                   accept="image/*"
                   onUploadSuccess={(url) => setFormData({ ...formData, image_url: url })}
@@ -201,7 +212,7 @@ export default function NewEpisode() {
               ) : (
                 <MediaUploader
                   bucket={STORY_ASSETS_BUCKET}
-                  folder={episodeAudioFolder(selectedCardTitle, selectedStoryTitle)}
+                  folder={episodeAudioFolderById(selectedCardId, selectedStoryId)}
                   fileName={(extension) => episodeAudioAssetName(formData.episode_number, extension || "mp3")}
                   accept="audio/*"
                   onUploadSuccess={(url, durationSeconds) =>

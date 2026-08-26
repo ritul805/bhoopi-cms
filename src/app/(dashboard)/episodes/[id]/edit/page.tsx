@@ -10,9 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MediaUploader } from "@/components/MediaUploader";
 import {
   episodeAudioAssetName,
-  episodeAudioFolder,
+  episodeAudioFolderById,
   episodeImageAssetName,
-  episodeImageFolder,
+  episodeImageFolderById,
   STORY_ASSETS_BUCKET,
 } from "@/lib/storagePaths";
 
@@ -106,14 +106,14 @@ export default function EditEpisode({ params }: { params: Promise<{ id: string }
 
   const getAudioFolder = () => {
     const selectedStory = stories.find(s => s.id === formData.story_id);
-    if (!selectedStory?.title || !selectedStory?.story_cards?.title) return "stories/audio";
-    return episodeAudioFolder(selectedStory.story_cards.title, selectedStory.title);
+    if (!selectedStory?.id || !selectedStory?.story_cards?.id) return "stories/audio";
+    return episodeAudioFolderById(selectedStory.story_cards.id, selectedStory.id);
   };
 
   const getImageFolder = () => {
     const selectedStory = stories.find(s => s.id === formData.story_id);
-    if (!selectedStory?.title || !selectedStory?.story_cards?.title) return "stories/images";
-    return episodeImageFolder(selectedStory.story_cards.title, selectedStory.title);
+    if (!selectedStory?.id || !selectedStory?.story_cards?.id) return "stories/images";
+    return episodeImageFolderById(selectedStory.story_cards.id, selectedStory.id);
   };
 
   if (fetching) {
@@ -143,7 +143,15 @@ export default function EditEpisode({ params }: { params: Promise<{ id: string }
                 required
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={formData.story_id}
-                onChange={(e) => setFormData({ ...formData, story_id: e.target.value })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    story_id: e.target.value,
+                    audio_url: "",
+                    image_url: "",
+                    duration_seconds: 0,
+                  })
+                }
               >
                 <option value="" disabled>Select a story...</option>
                 {stories.map(s => (
@@ -171,7 +179,15 @@ export default function EditEpisode({ params }: { params: Promise<{ id: string }
                   type="number"
                   required
                   value={formData.episode_number}
-                  onChange={(e) => setFormData({ ...formData, episode_number: parseInt(e.target.value) || 1 })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      episode_number: parseInt(e.target.value) || 1,
+                      audio_url: "",
+                      image_url: "",
+                      duration_seconds: 0,
+                    })
+                  }
                 />
               </div>
 

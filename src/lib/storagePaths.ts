@@ -47,6 +47,14 @@ export function storyInsideCardFolder(cardTitle: string, storyTitle: string) {
   return `${storyCardFolder(cardTitle)}/stories/${slugPart(storyTitle, "story")}`;
 }
 
+export function storyCardIdFolder(cardId: string) {
+  return `story_cards/${slugPart(cardId, "card")}`;
+}
+
+export function storyInsideCardIdFolder(cardId: string, storyId: string) {
+  return `${storyCardIdFolder(cardId)}/stories/${slugPart(storyId, "story")}`;
+}
+
 export function storyInsideCardThumbnailFolder(
   cardTitle: string,
   storyTitle: string
@@ -60,4 +68,12 @@ export function episodeImageFolder(cardTitle: string, storyTitle: string) {
 
 export function episodeAudioFolder(cardTitle: string, storyTitle: string) {
   return `${storyInsideCardFolder(cardTitle, storyTitle)}/audio`;
+}
+
+export function episodeImageFolderById(cardId: string, storyId: string) {
+  return `${storyInsideCardIdFolder(cardId, storyId)}/images`;
+}
+
+export function episodeAudioFolderById(cardId: string, storyId: string) {
+  return `${storyInsideCardIdFolder(cardId, storyId)}/audio`;
 }
