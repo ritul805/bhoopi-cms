@@ -31,6 +31,16 @@ type DesignToken = {
   is_active: boolean;
 };
 
+type DesignTokenPayload = {
+  token_key: string;
+  token_value: string;
+  token_type: string;
+  group_name: string;
+  description: string | null;
+  sort_order: number;
+  is_active: boolean;
+};
+
 type TabKey = "colors" | "typography" | "presets";
 
 const defaultForm = {
@@ -46,8 +56,12 @@ const defaultForm = {
 const defaultPresetValue = {
   background: "#ffffff",
   foreground: "#1d1b2a",
+  track: "#e0e0e0",
   radius: "8",
   padding: "16",
+  fillMode: "solid",
+  trackMode: "solid",
+  applicability: ["Nudge", "Guide"],
 };
 
 const projectFontFamily = "Canva sans";
@@ -120,8 +134,44 @@ const presetCategories = [
   ["Button", Sparkles],
   ["Divider", CaseSensitive],
   ["Progress Bar", LayoutTemplate],
+  ["Lottie", Sparkles],
+  ["Video", ImageIcon],
+  ["Carousel", LayoutTemplate],
   ["Stories", Bookmark],
+  ["Progress", LayoutTemplate],
+  ["Close", X],
+  ["Mute", Sparkles],
+  ["Bottom sheet", LayoutTemplate],
+  ["Dialog", Box],
+  ["Tooltip", CaseSensitive],
 ] as const;
+
+const defaultDesignTokens: DesignTokenPayload[] = [
+  ...boopiColorSeeds.map(([, key, value, description], index) => ({
+    token_key: key,
+    token_value: value,
+    token_type: "color",
+    group_name: "boopi",
+    description,
+    sort_order: index,
+    is_active: true,
+  })),
+  ...typographySeeds.map(([name, key, size, lineHeight, letterSpacing, weight], index) => ({
+    token_key: key,
+    token_value: JSON.stringify({
+      sample: "Keep the pace",
+      size,
+      lineHeight,
+      letterSpacing,
+      weight,
+    }),
+    token_type: "typography",
+    group_name: "typography",
+    description: `${name} type token for Boopi app screens.`,
+    sort_order: index,
+    is_active: true,
+  })),
+];
 
 function tokenName(tokenKey: string) {
   return tokenKey
@@ -185,8 +235,12 @@ function parsePresetValue(value: string) {
     return {
       background: parsed.background || defaultPresetValue.background,
       foreground: parsed.foreground || defaultPresetValue.foreground,
+      track: parsed.track || defaultPresetValue.track,
       radius: parsed.radius || defaultPresetValue.radius,
       padding: parsed.padding || defaultPresetValue.padding,
+      fillMode: parsed.fillMode || defaultPresetValue.fillMode,
+      trackMode: parsed.trackMode || defaultPresetValue.trackMode,
+      applicability: Array.isArray(parsed.applicability) ? parsed.applicability : defaultPresetValue.applicability,
     };
   } catch {
     return defaultPresetValue;
@@ -206,6 +260,7 @@ export default function DesignSystemPage() {
   const [editingTypographyId, setEditingTypographyId] = useState<string | null>(null);
   const [editingTypographyKey, setEditingTypographyKey] = useState<string | null>(null);
   const [typographyModalOpen, setTypographyModalOpen] = useState(false);
+  const [presetModalOpen, setPresetModalOpen] = useState(false);
   const [selectedPresetCategory, setSelectedPresetCategory] = useState("All presets");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -301,7 +356,36 @@ export default function DesignSystemPage() {
       console.error("Error fetching design tokens:", error);
       alert("Could not load design tokens. Please run the design system SQL first.");
     } else {
-      setTokens(data || []);
+      const existingTokens = data || [];
+      const existingKeys = new Set(existingTokens.map((token) => token.token_key));
+      const missingDefaults = defaultDesignTokens.filter((token) => !existingKeys.has(token.token_key));
+
+      if (missingDefaults.length > 0) {
+        const { error: seedError } = await supabase
+          .from("design_tokens")
+          .upsert(missingDefaults, { onConflict: "token_key", ignoreDuplicates: true });
+
+        if (seedError) {
+          console.error("Error seeding default design tokens:", seedError);
+          setTokens(existingTokens);
+        } else {
+          const { data: seededData, error: refetchError } = await supabase
+            .from("design_tokens")
+            .select("id, token_key, token_value, token_type, group_name, description, sort_order, is_active")
+            .order("group_name", { ascending: true })
+            .order("sort_order", { ascending: true })
+            .order("token_key", { ascending: true });
+
+          if (refetchError) {
+            console.error("Error refetching seeded design tokens:", refetchError);
+            setTokens(existingTokens);
+          } else {
+            setTokens(seededData || existingTokens);
+          }
+        }
+      } else {
+        setTokens(existingTokens);
+      }
     }
     setLoading(false);
   };
@@ -359,6 +443,7 @@ export default function DesignSystemPage() {
     );
     if (token.token_type === "preset" && token.group_name) {
       setSelectedPresetCategory(token.group_name);
+      setPresetModalOpen(true);
     }
   };
 
@@ -600,6 +685,7 @@ export default function DesignSystemPage() {
     }
 
     resetForm("presets");
+    setPresetModalOpen(false);
     fetchTokens();
   };
 
@@ -609,6 +695,37 @@ export default function DesignSystemPage() {
       ...formData,
       token_value: JSON.stringify({ ...parsed, [field]: value }),
     });
+  };
+
+  const togglePresetApplicability = (value: string) => {
+    const parsed = parsePresetValue(formData.token_value);
+    const applicability = parsed.applicability.includes(value)
+      ? parsed.applicability.filter((item: string) => item !== value)
+      : [...parsed.applicability, value];
+    setFormData({
+      ...formData,
+      token_value: JSON.stringify({ ...parsed, applicability }),
+    });
+  };
+
+  const openPresetEditor = (preset?: DesignToken, category = selectedPresetCategory) => {
+    if (preset) {
+      handleEdit(preset);
+      setPresetModalOpen(true);
+      return;
+    }
+
+    const nextCategory = category === "All presets" ? "Progress Bar" : category;
+    setEditingId(null);
+    setFormData({
+      ...defaultForm,
+      token_key: "",
+      token_type: "preset",
+      group_name: nextCategory,
+      description: "",
+      token_value: JSON.stringify(defaultPresetValue),
+    });
+    setPresetModalOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -1028,21 +1145,11 @@ export default function DesignSystemPage() {
         {activeTab === "presets" && (
           <div className="grid gap-6 lg:grid-cols-[370px_1fr]">
             <div className="rounded-lg border border-[#ebe7df] bg-white p-3">
-              {presetCategories.map(([label, Icon], index) => (
+              {presetCategories.map(([label, Icon]) => (
                 <button
                   key={label}
                   type="button"
-                  onClick={() => {
-                    setSelectedPresetCategory(label);
-                    setEditingId(null);
-                    setFormData({
-                      ...defaultForm,
-                      token_key: "",
-                      token_type: "preset",
-                      group_name: label === "All presets" ? "Text" : label,
-                      token_value: JSON.stringify(defaultPresetValue),
-                    });
-                  }}
+                  onClick={() => setSelectedPresetCategory(label)}
                   className={`flex w-full items-center justify-between rounded-lg px-5 py-4 text-left text-sm font-medium ${
                     selectedPresetCategory === label ? "bg-[#ece9ff] text-[#5146ff]" : "text-[#77758a] hover:bg-[#faf8f3]"
                   }`}
@@ -1055,104 +1162,14 @@ export default function DesignSystemPage() {
               ))}
             </div>
             <div className="grid gap-5">
-              <form onSubmit={handlePresetSubmit} className="grid gap-4 rounded-lg border border-[#ebe7df] bg-white p-5">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-lg font-bold">{editingId ? "Edit preset" : "New preset"}</h2>
-                    <p className="text-sm text-[#77758a]">Reusable values for Boopi canvas components.</p>
-                  </div>
-                  {editingId && (
-                    <Button type="button" variant="outline" onClick={() => resetForm("presets")}>
-                      Cancel
-                    </Button>
-                  )}
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor="preset_name">Preset name</Label>
-                    <Input
-                      id="preset_name"
-                      placeholder="Story title card"
-                      value={formData.token_key.startsWith("preset.") ? tokenName(formData.token_key) : formData.token_key}
-                      onChange={(event) => setFormData({ ...formData, token_key: event.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="preset_category">Category</Label>
-                    <select
-                      id="preset_category"
-                      className="h-10 rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                      value={formData.group_name}
-                      onChange={(event) => setFormData({ ...formData, group_name: event.target.value })}
-                    >
-                      {presetCategories.slice(1).map(([label]) => (
-                        <option key={label} value={label}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="preset_background">Background</Label>
-                    <Input
-                      id="preset_background"
-                      type="color"
-                      value={parsePresetValue(formData.token_value).background}
-                      onChange={(event) => updatePresetValue("background", event.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="preset_foreground">Text color</Label>
-                    <Input
-                      id="preset_foreground"
-                      type="color"
-                      value={parsePresetValue(formData.token_value).foreground}
-                      onChange={(event) => updatePresetValue("foreground", event.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="preset_radius">Radius</Label>
-                    <Input
-                      id="preset_radius"
-                      type="number"
-                      value={parsePresetValue(formData.token_value).radius}
-                      onChange={(event) => updatePresetValue("radius", event.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="preset_padding">Padding</Label>
-                    <Input
-                      id="preset_padding"
-                      type="number"
-                      value={parsePresetValue(formData.token_value).padding}
-                      onChange={(event) => updatePresetValue("padding", event.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="preset_description">Description</Label>
-                  <Input
-                    id="preset_description"
-                    placeholder="Used for story list cards"
-                    value={formData.description}
-                    onChange={(event) => setFormData({ ...formData, description: event.target.value })}
-                  />
-                </div>
-
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={saving} className="gap-2 bg-[#5146ff] hover:bg-[#4338e8]">
-                    <Plus className="h-4 w-4" /> {saving ? "Saving..." : editingId ? "Save preset" : "Create preset"}
-                  </Button>
-                </div>
-              </form>
+              <div className="flex justify-end">
+                <Button type="button" onClick={() => openPresetEditor()} className="gap-2 bg-[#5146ff] hover:bg-[#4338e8]">
+                  <Plus className="h-4 w-4" /> New preset
+                </Button>
+              </div>
 
               {visiblePresetTokens.length === 0 ? (
-                <div className="flex min-h-[300px] flex-col items-center justify-center rounded-lg border border-[#ebe7df] bg-white p-8 text-center">
+                <div className="flex min-h-[360px] flex-col items-center justify-center rounded-lg border border-[#ebe7df] bg-white p-8 text-center">
                   <div className="rounded-lg bg-[#f5f3ef] p-5 text-[#aaa6b6]">
                     <Bookmark className="h-8 w-8" />
                   </div>
@@ -1160,6 +1177,9 @@ export default function DesignSystemPage() {
                   <p className="mt-3 max-w-md text-sm leading-6 text-[#77758a]">
                     Create reusable styling for text, containers, images, buttons, and story components.
                   </p>
+                  <Button type="button" onClick={() => openPresetEditor()} className="mt-6 gap-2 bg-[#5146ff] hover:bg-[#4338e8]">
+                    <Plus className="h-4 w-4" /> New preset
+                  </Button>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
@@ -1173,7 +1193,7 @@ export default function DesignSystemPage() {
                             <p className="mt-1 text-sm text-[#77758a]">{preset.group_name}</p>
                           </div>
                           <div className="flex gap-2">
-                            <Button type="button" variant="outline" size="sm" onClick={() => handleEdit(preset)}>
+                            <Button type="button" variant="outline" size="sm" onClick={() => openPresetEditor(preset)}>
                               Edit
                             </Button>
                             <Button type="button" variant="outline" size="icon" onClick={() => handleDelete(preset.id)}>
@@ -1181,17 +1201,16 @@ export default function DesignSystemPage() {
                             </Button>
                           </div>
                         </div>
-                        {preset.description && <p className="mt-3 text-sm text-[#77758a]">{preset.description}</p>}
-                        <div
-                          className="mt-4 border border-[#ded9cf]"
-                          style={{
-                            backgroundColor: value.background,
-                            color: value.foreground,
-                            borderRadius: `${value.radius}px`,
-                            padding: `${value.padding}px`,
-                          }}
-                        >
-                          Boopi preset preview
+                        <div className="mt-5 rounded-lg border border-[#ded9cf] bg-[#fffdfa] p-5">
+                          <div
+                            className="h-4 w-40 overflow-hidden rounded-sm"
+                            style={{ backgroundColor: value.track, borderRadius: `${value.radius}px` }}
+                          >
+                            <div
+                              className="h-full w-2/3"
+                              style={{ backgroundColor: value.foreground, borderRadius: `${value.radius}px` }}
+                            />
+                          </div>
                         </div>
                       </div>
                     );
@@ -1199,6 +1218,222 @@ export default function DesignSystemPage() {
                 </div>
               )}
             </div>
+
+            {presetModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-5">
+                <form onSubmit={handlePresetSubmit} className="flex h-[82vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-2xl border border-[#ebe7df] bg-white shadow-2xl">
+                  <div className="flex items-start justify-between border-b border-[#ebe7df] px-8 py-5">
+                    <div>
+                      <h2 className="text-2xl font-bold">{editingId ? "Edit preset" : "New preset"}</h2>
+                      <p className="mt-1 text-sm text-[#77758a]">Create reusable styling for a canvas element.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetForm("presets");
+                        setPresetModalOpen(false);
+                      }}
+                      className="rounded-md p-1 text-[#9a98a8] hover:bg-[#f5f3ef]"
+                      aria-label="Close preset editor"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr_360px]">
+                    <div className="overflow-y-auto border-r border-[#ebe7df] p-4">
+                      <p className="mb-3 px-3 text-xs font-bold uppercase tracking-[0.12em] text-[#aaa6b6]">Element type</p>
+                      {presetCategories.slice(1).map(([label, Icon]) => (
+                        <button
+                          key={label}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, group_name: label })}
+                          className={`mb-1 flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium ${
+                            formData.group_name === label ? "bg-[#5146ff] text-white ring-2 ring-[#7b72ff]" : "text-[#77758a] hover:bg-[#faf8f3]"
+                          }`}
+                        >
+                          <Icon className="h-5 w-5" /> {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid min-h-0 grid-rows-[auto_1fr]">
+                      <div className="grid gap-4 border-b border-[#ebe7df] px-6 py-5 md:grid-cols-[1fr_auto]">
+                        <div className="grid gap-2">
+                          <Label htmlFor="preset_name">Preset name</Label>
+                          <Input
+                            id="preset_name"
+                            placeholder="e.g. Primary CTA"
+                            value={formData.token_key.startsWith("preset.") ? tokenName(formData.token_key.replace(/^preset\.[^.]+\./, "")) : formData.token_key}
+                            onChange={(event) => setFormData({ ...formData, token_key: event.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label>Applicability</Label>
+                          <div className="mt-3 flex gap-4 text-sm text-[#77758a]">
+                            {["Nudge", "Guide"].map((item) => (
+                              <label key={item} className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={parsePresetValue(formData.token_value).applicability.includes(item)}
+                                  onChange={() => togglePresetApplicability(item)}
+                                />
+                                {item}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex min-h-0 items-center justify-center bg-[#f7f6f2] p-8">
+                        <div className="flex h-[430px] w-[260px] items-center justify-center rounded-lg border border-[#ebe7df] bg-white shadow-sm">
+                          {formData.group_name === "Progress Bar" ? (
+                            <div
+                              className="h-5 w-40 overflow-hidden"
+                              style={{
+                                backgroundColor: parsePresetValue(formData.token_value).track,
+                                borderRadius: `${parsePresetValue(formData.token_value).radius}px`,
+                              }}
+                            >
+                              <div
+                                className="h-full w-2/3"
+                                style={{
+                                  backgroundColor: parsePresetValue(formData.token_value).foreground,
+                                  borderRadius: `${parsePresetValue(formData.token_value).radius}px`,
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <div
+                              className="min-h-20 w-44 border border-[#ded9cf] text-center text-sm"
+                              style={{
+                                backgroundColor: parsePresetValue(formData.token_value).background,
+                                color: parsePresetValue(formData.token_value).foreground,
+                                borderRadius: `${parsePresetValue(formData.token_value).radius}px`,
+                                padding: `${parsePresetValue(formData.token_value).padding}px`,
+                              }}
+                            >
+                              Boopi preset
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="overflow-y-auto border-l border-[#ebe7df] bg-white">
+                      <div className="border-b border-[#ebe7df] p-6">
+                        <p className="mb-5 text-xs font-bold uppercase tracking-[0.12em] text-[#aaa6b6]">Style</p>
+
+                        <Label>Fill</Label>
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          {["solid", "gradient", "none"].map((mode) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => updatePresetValue("fillMode", mode)}
+                              className={`rounded-lg border px-3 py-3 text-sm capitalize ${
+                                parsePresetValue(formData.token_value).fillMode === mode
+                                  ? "border-[#5146ff] bg-[#ece9ff] text-[#5146ff]"
+                                  : "border-[#ebe7df] text-[#1d1b2a]"
+                              }`}
+                            >
+                              {mode}
+                            </button>
+                          ))}
+                        </div>
+
+                        <Label htmlFor="preset_foreground" className="mt-5 block">Color</Label>
+                        <div className="mt-2 flex overflow-hidden rounded-lg border border-[#ded9cf]">
+                          <Input
+                            id="preset_foreground"
+                            type="color"
+                            value={parsePresetValue(formData.token_value).foreground}
+                            onChange={(event) => updatePresetValue("foreground", event.target.value)}
+                            className="h-12 w-14 rounded-none border-0 px-2"
+                          />
+                          <Input
+                            value={parsePresetValue(formData.token_value).foreground.replace("#", "").toUpperCase()}
+                            onChange={(event) => updatePresetValue("foreground", `#${event.target.value}`)}
+                            className="h-12 rounded-none border-0 font-mono uppercase"
+                          />
+                        </div>
+
+                        <Label className="mt-6 block">Track</Label>
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          {["solid", "gradient", "none"].map((mode) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => updatePresetValue("trackMode", mode)}
+                              className={`rounded-lg border px-3 py-3 text-sm capitalize ${
+                                parsePresetValue(formData.token_value).trackMode === mode
+                                  ? "border-[#5146ff] bg-[#ece9ff] text-[#5146ff]"
+                                  : "border-[#ebe7df] text-[#1d1b2a]"
+                              }`}
+                            >
+                              {mode}
+                            </button>
+                          ))}
+                        </div>
+
+                        <Label htmlFor="preset_track" className="mt-5 block">Color</Label>
+                        <div className="mt-2 flex overflow-hidden rounded-lg border border-[#ded9cf]">
+                          <Input
+                            id="preset_track"
+                            type="color"
+                            value={parsePresetValue(formData.token_value).track}
+                            onChange={(event) => updatePresetValue("track", event.target.value)}
+                            className="h-12 w-14 rounded-none border-0 px-2"
+                          />
+                          <Input
+                            value={parsePresetValue(formData.token_value).track.replace("#", "").toUpperCase()}
+                            onChange={(event) => updatePresetValue("track", `#${event.target.value}`)}
+                            className="h-12 rounded-none border-0 font-mono uppercase"
+                          />
+                        </div>
+
+                        <Label htmlFor="preset_radius" className="mt-6 block">Corner radius (px)</Label>
+                        <div className="relative mt-2">
+                          <Input
+                            id="preset_radius"
+                            type="number"
+                            value={parsePresetValue(formData.token_value).radius}
+                            onChange={(event) => updatePresetValue("radius", event.target.value)}
+                            className="pr-10"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#aaa6b6]">px</span>
+                        </div>
+
+                        <Label htmlFor="preset_padding" className="mt-6 block">Padding (px)</Label>
+                        <Input
+                          id="preset_padding"
+                          type="number"
+                          value={parsePresetValue(formData.token_value).padding}
+                          onChange={(event) => updatePresetValue("padding", event.target.value)}
+                          className="mt-2"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 border-t border-[#ebe7df] px-8 py-5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        resetForm("presets");
+                        setPresetModalOpen(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={saving} className="gap-2 bg-[#5146ff] hover:bg-[#4338e8]">
+                      <Plus className="h-4 w-4" /> {saving ? "Saving..." : editingId ? "Save preset" : "Create preset"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         )}
       </div>
