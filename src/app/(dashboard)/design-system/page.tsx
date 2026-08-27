@@ -42,6 +42,13 @@ const defaultForm = {
   is_active: true,
 };
 
+const defaultPresetValue = {
+  background: "#ffffff",
+  foreground: "#1d1b2a",
+  radius: "8",
+  padding: "16",
+};
+
 const boopiColorSeeds = [
   ["Primary", "color.primary", "#6750A4", "Main Boopi action color."],
   ["On Primary", "color.on-primary", "#FFFFFF", "Text and icons on primary."],
@@ -108,11 +115,38 @@ function isHexColor(value: string) {
   return /^#[0-9a-f]{3,8}$/i.test(value.trim());
 }
 
+function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function presetKey(name: string, category: string) {
+  return `preset.${slugify(category || "all")}.${slugify(name) || Date.now()}`;
+}
+
+function parsePresetValue(value: string) {
+  try {
+    const parsed = JSON.parse(value);
+    return {
+      background: parsed.background || defaultPresetValue.background,
+      foreground: parsed.foreground || defaultPresetValue.foreground,
+      radius: parsed.radius || defaultPresetValue.radius,
+      padding: parsed.padding || defaultPresetValue.padding,
+    };
+  } catch {
+    return defaultPresetValue;
+  }
+}
+
 export default function DesignSystemPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("colors");
   const [tokens, setTokens] = useState<DesignToken[]>([]);
   const [formData, setFormData] = useState(defaultForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedPresetCategory, setSelectedPresetCategory] = useState("All presets");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -138,6 +172,27 @@ export default function DesignSystemPage() {
     });
   }, [colorTokens]);
 
+  const presetTokens = useMemo(
+    () => tokens.filter((token) => token.token_type === "preset"),
+    [tokens]
+  );
+
+  const visiblePresetTokens = useMemo(() => {
+    if (selectedPresetCategory === "All presets") return presetTokens;
+    return presetTokens.filter((token) => token.group_name === selectedPresetCategory);
+  }, [presetTokens, selectedPresetCategory]);
+
+  const presetCounts = useMemo(() => {
+    return presetTokens.reduce<Record<string, number>>(
+      (counts, token) => {
+        counts["All presets"] += 1;
+        if (token.group_name) counts[token.group_name] = (counts[token.group_name] || 0) + 1;
+        return counts;
+      },
+      { "All presets": 0 }
+    );
+  }, [presetTokens]);
+
   const fetchTokens = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -162,6 +217,19 @@ export default function DesignSystemPage() {
 
   const resetForm = (tab: TabKey = activeTab) => {
     setEditingId(null);
+    if (tab === "presets") {
+      const category = selectedPresetCategory === "All presets" ? "Text" : selectedPresetCategory;
+      setFormData({
+        ...defaultForm,
+        token_key: "",
+        token_type: "preset",
+        group_name: category,
+        description: "",
+        token_value: JSON.stringify(defaultPresetValue),
+      });
+      return;
+    }
+
     setFormData({
       ...defaultForm,
       token_type: tab === "font" ? "font" : tab === "typography" ? "typography" : "color",
@@ -186,7 +254,18 @@ export default function DesignSystemPage() {
       sort_order: String(token.sort_order || 0),
       is_active: token.is_active,
     });
-    setActiveTab(token.token_type === "font" ? "font" : token.token_type === "typography" ? "typography" : "colors");
+    setActiveTab(
+      token.token_type === "font"
+        ? "font"
+        : token.token_type === "typography"
+          ? "typography"
+          : token.token_type === "preset"
+            ? "presets"
+            : "colors"
+    );
+    if (token.token_type === "preset" && token.group_name) {
+      setSelectedPresetCategory(token.group_name);
+    }
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -242,6 +321,49 @@ export default function DesignSystemPage() {
       return;
     }
     fetchTokens();
+  };
+
+  const handlePresetSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const presetName = formData.token_key.trim();
+    if (!presetName) {
+      alert("Preset name is required.");
+      return;
+    }
+
+    setSaving(true);
+    const payload = {
+      token_key: editingId && formData.token_key.startsWith("preset.")
+        ? formData.token_key
+        : presetKey(presetName, formData.group_name),
+      token_value: formData.token_value,
+      token_type: "preset",
+      group_name: formData.group_name || "Text",
+      description: formData.description.trim() || null,
+      sort_order: Number(formData.sort_order || 0),
+      is_active: formData.is_active,
+    };
+
+    const { error } = editingId
+      ? await supabase.from("design_tokens").update(payload).eq("id", editingId)
+      : await supabase.from("design_tokens").insert([payload]);
+
+    setSaving(false);
+    if (error) {
+      alert(`Could not save preset: ${error.message}`);
+      return;
+    }
+
+    resetForm("presets");
+    fetchTokens();
+  };
+
+  const updatePresetValue = (field: keyof typeof defaultPresetValue, value: string) => {
+    const parsed = parsePresetValue(formData.token_value);
+    setFormData({
+      ...formData,
+      token_value: JSON.stringify({ ...parsed, [field]: value }),
+    });
   };
 
   const handleDelete = async (id: string) => {
@@ -478,28 +600,172 @@ export default function DesignSystemPage() {
                 <button
                   key={label}
                   type="button"
+                  onClick={() => {
+                    setSelectedPresetCategory(label);
+                    setEditingId(null);
+                    setFormData({
+                      ...defaultForm,
+                      token_key: "",
+                      token_type: "preset",
+                      group_name: label === "All presets" ? "Text" : label,
+                      token_value: JSON.stringify(defaultPresetValue),
+                    });
+                  }}
                   className={`flex w-full items-center justify-between rounded-lg px-5 py-4 text-left text-sm font-medium ${
-                    index === 0 ? "bg-[#ece9ff] text-[#5146ff]" : "text-[#77758a] hover:bg-[#faf8f3]"
+                    selectedPresetCategory === label ? "bg-[#ece9ff] text-[#5146ff]" : "text-[#77758a] hover:bg-[#faf8f3]"
                   }`}
                 >
                   <span className="flex items-center gap-4">
                     <Icon className="h-5 w-5" /> {label}
                   </span>
-                  <span>0</span>
+                  <span>{presetCounts[label] || 0}</span>
                 </button>
               ))}
             </div>
-            <div className="flex min-h-[420px] flex-col items-center justify-center rounded-lg border border-[#ebe7df] bg-white p-8 text-center">
-              <div className="rounded-lg bg-[#f5f3ef] p-5 text-[#aaa6b6]">
-                <Bookmark className="h-8 w-8" />
-              </div>
-              <h2 className="mt-6 text-xl font-bold">No presets yet</h2>
-              <p className="mt-3 max-w-md text-sm leading-6 text-[#77758a]">
-                Create reusable styling for text, containers, images, buttons, and story components.
-              </p>
-              <Button type="button" className="mt-6 gap-2 bg-[#5146ff] hover:bg-[#4338e8]">
-                <Plus className="h-4 w-4" /> New preset
-              </Button>
+            <div className="grid gap-5">
+              <form onSubmit={handlePresetSubmit} className="grid gap-4 rounded-lg border border-[#ebe7df] bg-white p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-bold">{editingId ? "Edit preset" : "New preset"}</h2>
+                    <p className="text-sm text-[#77758a]">Reusable values for Boopi canvas components.</p>
+                  </div>
+                  {editingId && (
+                    <Button type="button" variant="outline" onClick={() => resetForm("presets")}>
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="preset_name">Preset name</Label>
+                    <Input
+                      id="preset_name"
+                      placeholder="Story title card"
+                      value={formData.token_key.startsWith("preset.") ? tokenName(formData.token_key) : formData.token_key}
+                      onChange={(event) => setFormData({ ...formData, token_key: event.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="preset_category">Category</Label>
+                    <select
+                      id="preset_category"
+                      className="h-10 rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      value={formData.group_name}
+                      onChange={(event) => setFormData({ ...formData, group_name: event.target.value })}
+                    >
+                      {presetCategories.slice(1).map(([label]) => (
+                        <option key={label} value={label}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="preset_background">Background</Label>
+                    <Input
+                      id="preset_background"
+                      type="color"
+                      value={parsePresetValue(formData.token_value).background}
+                      onChange={(event) => updatePresetValue("background", event.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="preset_foreground">Text color</Label>
+                    <Input
+                      id="preset_foreground"
+                      type="color"
+                      value={parsePresetValue(formData.token_value).foreground}
+                      onChange={(event) => updatePresetValue("foreground", event.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="preset_radius">Radius</Label>
+                    <Input
+                      id="preset_radius"
+                      type="number"
+                      value={parsePresetValue(formData.token_value).radius}
+                      onChange={(event) => updatePresetValue("radius", event.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="preset_padding">Padding</Label>
+                    <Input
+                      id="preset_padding"
+                      type="number"
+                      value={parsePresetValue(formData.token_value).padding}
+                      onChange={(event) => updatePresetValue("padding", event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="preset_description">Description</Label>
+                  <Input
+                    id="preset_description"
+                    placeholder="Used for story list cards"
+                    value={formData.description}
+                    onChange={(event) => setFormData({ ...formData, description: event.target.value })}
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={saving} className="gap-2 bg-[#5146ff] hover:bg-[#4338e8]">
+                    <Plus className="h-4 w-4" /> {saving ? "Saving..." : editingId ? "Save preset" : "Create preset"}
+                  </Button>
+                </div>
+              </form>
+
+              {visiblePresetTokens.length === 0 ? (
+                <div className="flex min-h-[300px] flex-col items-center justify-center rounded-lg border border-[#ebe7df] bg-white p-8 text-center">
+                  <div className="rounded-lg bg-[#f5f3ef] p-5 text-[#aaa6b6]">
+                    <Bookmark className="h-8 w-8" />
+                  </div>
+                  <h2 className="mt-6 text-xl font-bold">No presets yet</h2>
+                  <p className="mt-3 max-w-md text-sm leading-6 text-[#77758a]">
+                    Create reusable styling for text, containers, images, buttons, and story components.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {visiblePresetTokens.map((preset) => {
+                    const value = parsePresetValue(preset.token_value);
+                    return (
+                      <div key={preset.id} className="rounded-lg border border-[#ebe7df] bg-white p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3 className="font-semibold">{tokenName(preset.token_key.replace(/^preset\.[^.]+\./, ""))}</h3>
+                            <p className="mt-1 text-sm text-[#77758a]">{preset.group_name}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button type="button" variant="outline" size="sm" onClick={() => handleEdit(preset)}>
+                              Edit
+                            </Button>
+                            <Button type="button" variant="outline" size="icon" onClick={() => handleDelete(preset.id)}>
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </div>
+                        </div>
+                        {preset.description && <p className="mt-3 text-sm text-[#77758a]">{preset.description}</p>}
+                        <div
+                          className="mt-4 border border-[#ded9cf]"
+                          style={{
+                            backgroundColor: value.background,
+                            color: value.foreground,
+                            borderRadius: `${value.radius}px`,
+                            padding: `${value.padding}px`,
+                          }}
+                        >
+                          Boopi preset preview
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
