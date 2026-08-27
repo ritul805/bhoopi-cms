@@ -12,6 +12,7 @@ import {
   Sparkles,
   Trash2,
   Type,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ type DesignToken = {
   is_active: boolean;
 };
 
-type TabKey = "colors" | "font" | "typography" | "presets";
+type TabKey = "colors" | "typography" | "presets";
 
 const defaultForm = {
   token_key: "",
@@ -49,18 +50,25 @@ const defaultPresetValue = {
   padding: "16",
 };
 
-const fontWeights = ["100", "200", "300", "400", "500", "600", "700", "800", "900"] as const;
+const projectFontFamily = "Canva sans";
 
-const defaultFontValue: { family: string; weights: string[] } = {
-  family: "Canva Sans",
-  weights: [...fontWeights],
-};
+const fontWeights = [
+  ["200", "Extra Light"],
+  ["300", "Light"],
+  ["400", "Regular"],
+  ["500", "Medium"],
+  ["600", "Semi Bold"],
+  ["700", "Bold"],
+  ["800", "Extra Bold"],
+  ["900", "Heavy"],
+] as const;
 
 const defaultTypographyValue = {
   name: "",
   sample: "Keep the pace",
   size: "16",
   lineHeight: "1.5",
+  letterSpacing: "0",
   weight: "400",
 };
 
@@ -87,21 +95,21 @@ const boopiColorSeeds = [
 ] as const;
 
 const typographySeeds = [
-  ["Display Large", "typography.display-large", "57", "1.12", "400"],
-  ["Display Medium", "typography.display-medium", "45", "1.16", "400"],
-  ["Display Small", "typography.display-small", "36", "1.22", "400"],
-  ["Headline Large", "typography.headline-large", "32", "1.25", "400"],
-  ["Headline Medium", "typography.headline-medium", "28", "1.29", "400"],
-  ["Headline Small", "typography.headline-small", "24", "1.33", "400"],
-  ["Title Large", "typography.title-large", "22", "1.27", "500"],
-  ["Title Medium", "typography.title-medium", "16", "1.5", "500"],
-  ["Title Small", "typography.title-small", "14", "1.43", "500"],
-  ["Body Large", "typography.body-large", "16", "1.5", "400"],
-  ["Body Medium", "typography.body-medium", "14", "1.43", "400"],
-  ["Body Small", "typography.body-small", "12", "1.33", "400"],
-  ["Label Large", "typography.label-large", "14", "1.43", "500"],
-  ["Label Medium", "typography.label-medium", "12", "1.33", "500"],
-  ["Label Small", "typography.label-small", "11", "1.45", "500"],
+  ["Display Large", "typography.display-large", "57", "1.12", "-0.25", "400"],
+  ["Display Medium", "typography.display-medium", "45", "1.16", "0", "400"],
+  ["Display Small", "typography.display-small", "36", "1.22", "0", "400"],
+  ["Headline Large", "typography.headline-large", "32", "1.25", "0", "400"],
+  ["Headline Medium", "typography.headline-medium", "28", "1.29", "0", "400"],
+  ["Headline Small", "typography.headline-small", "24", "1.33", "0", "400"],
+  ["Title Large", "typography.title-large", "22", "1.27", "0", "500"],
+  ["Title Medium", "typography.title-medium", "16", "1.5", "0.15", "500"],
+  ["Title Small", "typography.title-small", "14", "1.43", "0.1", "500"],
+  ["Body Large", "typography.body-large", "16", "1.5", "0.5", "400"],
+  ["Body Medium", "typography.body-medium", "14", "1.43", "0.25", "400"],
+  ["Body Small", "typography.body-small", "12", "1.33", "0.4", "400"],
+  ["Label Large", "typography.label-large", "14", "1.43", "0.1", "500"],
+  ["Label Medium", "typography.label-medium", "12", "1.33", "0.5", "500"],
+  ["Label Small", "typography.label-small", "11", "1.45", "0.5", "500"],
 ] as const;
 
 const presetCategories = [
@@ -146,18 +154,6 @@ function typographyKey(name: string) {
   return `typography.${slugify(name) || Date.now()}`;
 }
 
-function parseFontValue(value: string) {
-  try {
-    const parsed = JSON.parse(value);
-    return {
-      family: parsed.family || defaultFontValue.family,
-      weights: Array.isArray(parsed.weights) && parsed.weights.length ? parsed.weights.map(String) : defaultFontValue.weights,
-    };
-  } catch {
-    return defaultFontValue;
-  }
-}
-
 function parseTypographyValue(value: string) {
   try {
     const parsed = JSON.parse(value);
@@ -165,6 +161,7 @@ function parseTypographyValue(value: string) {
       sample: parsed.sample || defaultTypographyValue.sample,
       size: String(parsed.size || defaultTypographyValue.size).replace("px", ""),
       lineHeight: String(parsed.lineHeight || defaultTypographyValue.lineHeight),
+      letterSpacing: String(parsed.letterSpacing ?? defaultTypographyValue.letterSpacing).replace("px", ""),
       weight: String(parsed.weight || defaultTypographyValue.weight),
     };
   } catch {
@@ -172,9 +169,14 @@ function parseTypographyValue(value: string) {
       sample: defaultTypographyValue.sample,
       size: value.replace("px", "") || defaultTypographyValue.size,
       lineHeight: defaultTypographyValue.lineHeight,
+      letterSpacing: defaultTypographyValue.letterSpacing,
       weight: defaultTypographyValue.weight,
     };
   }
+}
+
+function weightName(value: string) {
+  return fontWeights.find(([weight]) => weight === value)?.[1] || value;
 }
 
 function parsePresetValue(value: string) {
@@ -195,7 +197,6 @@ export default function DesignSystemPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("colors");
   const [tokens, setTokens] = useState<DesignToken[]>([]);
   const [formData, setFormData] = useState(defaultForm);
-  const [fontForm, setFontForm] = useState(defaultFontValue);
   const [typographyForm, setTypographyForm] = useState({
     ...defaultTypographyValue,
     description: "",
@@ -203,6 +204,8 @@ export default function DesignSystemPage() {
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTypographyId, setEditingTypographyId] = useState<string | null>(null);
+  const [editingTypographyKey, setEditingTypographyKey] = useState<string | null>(null);
+  const [typographyModalOpen, setTypographyModalOpen] = useState(false);
   const [selectedPresetCategory, setSelectedPresetCategory] = useState("All presets");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -234,11 +237,6 @@ export default function DesignSystemPage() {
     [tokens]
   );
 
-  const fontToken = useMemo(
-    () => tokens.find((token) => token.token_type === "font" && token.token_key === "font.project"),
-    [tokens]
-  );
-
   const savedTypographyTokens = useMemo(
     () => tokens.filter((token) => token.token_type === "typography"),
     [tokens]
@@ -247,9 +245,9 @@ export default function DesignSystemPage() {
   const typographyCards = useMemo(() => {
     const defaultKeys = new Set<string>(typographySeeds.map(([, key]) => key));
     const savedByKey = new Map(savedTypographyTokens.map((token) => [token.token_key, token]));
-    const defaults = typographySeeds.map(([name, key, size, lineHeight, weight], index) => {
+    const defaults = typographySeeds.map(([name, key, size, lineHeight, letterSpacing, weight], index) => {
       const saved = savedByKey.get(key);
-      const parsed = saved ? parseTypographyValue(saved.token_value) : { sample: "Keep the pace", size, lineHeight, weight };
+      const parsed = saved ? parseTypographyValue(saved.token_value) : { sample: "Keep the pace", size, lineHeight, letterSpacing, weight };
       return {
         id: saved?.id || key,
         name,
@@ -312,12 +310,6 @@ export default function DesignSystemPage() {
     fetchTokens();
   }, []);
 
-  useEffect(() => {
-    if (fontToken) {
-      setFontForm(parseFontValue(fontToken.token_value));
-    }
-  }, [fontToken]);
-
   const resetForm = (tab: TabKey = activeTab) => {
     setEditingId(null);
     if (tab === "presets") {
@@ -335,7 +327,7 @@ export default function DesignSystemPage() {
 
     setFormData({
       ...defaultForm,
-      token_type: tab === "font" ? "font" : tab === "typography" ? "typography" : "color",
+      token_type: tab === "typography" ? "typography" : "color",
       group_name: tab === "colors" ? "boopi" : tab,
       token_value: tab === "colors" ? "#6750a4" : "",
     });
@@ -359,9 +351,7 @@ export default function DesignSystemPage() {
       is_active: token.is_active,
     });
     setActiveTab(
-      token.token_type === "font"
-        ? "font"
-        : token.token_type === "typography"
+      token.token_type === "typography"
           ? "typography"
           : token.token_type === "preset"
             ? "presets"
@@ -427,48 +417,9 @@ export default function DesignSystemPage() {
     fetchTokens();
   };
 
-  const handleFontSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!fontForm.family.trim()) {
-      alert("Font family is required.");
-      return;
-    }
-
-    setSaving(true);
-    const payload = {
-      token_key: "font.project",
-      token_value: JSON.stringify({
-        family: fontForm.family.trim(),
-        weights: fontForm.weights,
-      }),
-      token_type: "font",
-      group_name: "font",
-      description: "Project font and enabled weights for Boopi screens.",
-      sort_order: 0,
-      is_active: true,
-    };
-
-    const { error } = fontToken
-      ? await supabase.from("design_tokens").update(payload).eq("id", fontToken.id)
-      : await supabase.from("design_tokens").insert([payload]);
-
-    setSaving(false);
-    if (error) {
-      alert(`Could not save font settings: ${error.message}`);
-      return;
-    }
-    fetchTokens();
-  };
-
-  const toggleFontWeight = (weight: string) => {
-    const nextWeights = fontForm.weights.includes(weight)
-      ? fontForm.weights.filter((item) => item !== weight)
-      : [...fontForm.weights, weight].sort((a, b) => Number(a) - Number(b));
-    setFontForm({ ...fontForm, weights: nextWeights });
-  };
-
   const resetTypographyForm = () => {
     setEditingTypographyId(null);
+    setEditingTypographyKey(null);
     setTypographyForm({
       ...defaultTypographyValue,
       description: "",
@@ -476,18 +427,37 @@ export default function DesignSystemPage() {
     });
   };
 
-  const handleTypographyEdit = (token: DesignToken) => {
-    const parsed = parseTypographyValue(token.token_value);
-    setEditingTypographyId(token.id);
+  const openTypographyEditor = (token?: {
+    name: string;
+    token_key: string;
+    sample: string;
+    size: string;
+    lineHeight: string;
+    letterSpacing: string;
+    weight: string;
+    description: string | null;
+    sort_order: number | null;
+    savedToken: DesignToken | null;
+  }) => {
+    if (!token) {
+      resetTypographyForm();
+      setTypographyModalOpen(true);
+      return;
+    }
+
+    setEditingTypographyId(token.savedToken?.id || null);
+    setEditingTypographyKey(token.token_key);
     setTypographyForm({
-      name: tokenName(token.token_key.replace(/^typography\./, "")),
-      sample: parsed.sample,
-      size: parsed.size,
-      lineHeight: parsed.lineHeight,
-      weight: parsed.weight,
+      name: token.name,
+      sample: token.sample,
+      size: token.size,
+      lineHeight: token.lineHeight,
+      letterSpacing: token.letterSpacing,
+      weight: token.weight,
       description: token.description || "",
       sort_order: String(token.sort_order || 0),
     });
+    setTypographyModalOpen(true);
   };
 
   const handleTypographySubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -498,15 +468,14 @@ export default function DesignSystemPage() {
     }
 
     setSaving(true);
-    const existingToken = editingTypographyId
-      ? savedTypographyTokens.find((token) => token.id === editingTypographyId)
-      : null;
+    const existingToken = editingTypographyId ? savedTypographyTokens.find((token) => token.id === editingTypographyId) : null;
     const payload = {
-      token_key: existingToken?.token_key || typographyKey(typographyForm.name),
+      token_key: existingToken?.token_key || editingTypographyKey || typographyKey(typographyForm.name),
       token_value: JSON.stringify({
         sample: typographyForm.sample || defaultTypographyValue.sample,
         size: typographyForm.size,
         lineHeight: typographyForm.lineHeight,
+        letterSpacing: typographyForm.letterSpacing,
         weight: typographyForm.weight,
       }),
       token_type: "typography",
@@ -527,11 +496,12 @@ export default function DesignSystemPage() {
     }
 
     resetTypographyForm();
+    setTypographyModalOpen(false);
     fetchTokens();
   };
 
   const saveTypographySeed = async (seed: (typeof typographySeeds)[number], index: number) => {
-    const [name, key, size, lineHeight, weight] = seed;
+    const [name, key, size, lineHeight, letterSpacing, weight] = seed;
     setSaving(true);
     const { error } = await supabase.from("design_tokens").insert([
       {
@@ -540,6 +510,7 @@ export default function DesignSystemPage() {
           sample: "Keep the pace",
           size,
           lineHeight,
+          letterSpacing,
           weight,
         }),
         token_type: "typography",
@@ -612,7 +583,6 @@ export default function DesignSystemPage() {
 
   const tabs = [
     { key: "colors" as const, label: "Colors", count: colorCards.length },
-    { key: "font" as const, label: "Font", count: `${fontForm.weights.length} weights` },
     { key: "typography" as const, label: "Typography", count: typographyCards.length },
     { key: "presets" as const, label: "Presets", count: tokens.filter((token) => token.token_type === "preset").length },
   ];
@@ -632,7 +602,7 @@ export default function DesignSystemPage() {
           <div>
             <h1 className="text-4xl font-bold tracking-tight">Design system</h1>
             <p className="mt-2 text-base text-[#77758a]">
-              Shared colors, type, font, and presets for Boopi app screens.
+              Shared colors, type, and presets for Boopi app screens.
             </p>
           </div>
           <div className="rounded-full border border-[#e4dfd5] bg-[#faf8f3] px-5 py-3 text-sm text-[#77758a] shadow-sm">
@@ -678,7 +648,7 @@ export default function DesignSystemPage() {
               </Button>
             </div>
 
-            <form onSubmit={handleSubmit} className="grid gap-3 rounded-lg border border-[#ebe7df] bg-white p-5 md:grid-cols-5">
+            <form onSubmit={handleSubmit} className="grid gap-3 rounded-lg border border-[#ebe7df] bg-white p-5 md:grid-cols-[2fr_1fr_1fr_auto]">
               <div className="grid gap-2 md:col-span-2">
                 <Label htmlFor="token_key">Token key</Label>
                 <Input
@@ -760,7 +730,22 @@ export default function DesignSystemPage() {
                     <p className="mt-5 text-sm text-[#77758a]">Light</p>
                     <button
                       type="button"
-                      onClick={() => token.savedToken && handleEdit(token.savedToken)}
+                      onClick={() => {
+                        if (token.savedToken) {
+                          handleEdit(token.savedToken);
+                          return;
+                        }
+                        setEditingId(null);
+                        setFormData({
+                          token_key: token.token_key,
+                          token_value: token.token_value,
+                          token_type: "color",
+                          group_name: "boopi",
+                          description: token.description || "",
+                          sort_order: String(token.sort_order || 0),
+                          is_active: true,
+                        });
+                      }}
                       className="mt-2 grid h-12 w-full grid-cols-[56px_1fr_78px] overflow-hidden rounded-lg border border-[#ded9cf] bg-[#fffdfa] text-left"
                     >
                       <span className="flex items-center justify-center border-r border-[#ded9cf]">
@@ -776,191 +761,42 @@ export default function DesignSystemPage() {
           </div>
         )}
 
-        {activeTab === "font" && (
-          <div className="grid gap-5">
-            <form onSubmit={handleFontSubmit} className="grid gap-5 rounded-lg border border-[#ebe7df] bg-white p-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <p className="text-sm text-[#77758a]">
-                  Project font <span className="font-semibold text-[#1d1b2a]">{fontForm.family}</span>{" "}
-                  <span className="mx-2">/</span> weights {fontForm.weights.join(", ") || "none selected"}
-                </p>
-                <Button type="submit" disabled={saving} className="gap-2 bg-[#5146ff] hover:bg-[#4338e8]">
-                  <Plus className="h-4 w-4" /> {saving ? "Saving..." : "Save font settings"}
-                </Button>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="font_family">Font family</Label>
-                <Input
-                  id="font_family"
-                  placeholder="Canva Sans"
-                  value={fontForm.family}
-                  onChange={(event) => setFontForm({ ...fontForm, family: event.target.value })}
-                />
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-9">
-                {fontWeights.map((weight) => {
-                  const selected = fontForm.weights.includes(weight);
-                  return (
-                    <button
-                      key={weight}
-                      type="button"
-                      onClick={() => toggleFontWeight(weight)}
-                      className={`rounded-lg border px-4 py-3 text-left transition-colors ${
-                        selected
-                          ? "border-[#5146ff] bg-[#ece9ff] text-[#1d1b2a]"
-                          : "border-[#ebe7df] bg-[#fffdfa] text-[#77758a] hover:border-[#d8d1c7]"
-                      }`}
-                    >
-                      <span className="block text-xs">Weight</span>
-                      <span className="mt-1 block font-mono text-lg" style={{ fontWeight: Number(weight) }}>
-                        {weight}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </form>
-
-            {fontWeights.map((weight) => (
-              <div key={weight} className="rounded-lg border border-[#ebe7df] bg-white p-6">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-[#77758a]">Weight {weight}</p>
-                    <p className="mt-3 text-4xl" style={{ fontFamily: fontForm.family, fontWeight: Number(weight) }}>
-                      Boopi bedtime stories
-                    </p>
-                  </div>
-                  <span
-                    className={`rounded-full px-3 py-1 font-mono text-sm ${
-                      fontForm.weights.includes(weight) ? "bg-[#ece9ff] text-[#5146ff]" : "bg-[#f2f0eb] text-[#9a98a8]"
-                    }`}
-                  >
-                    {fontForm.weights.includes(weight) ? "active" : "off"}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {activeTab === "typography" && (
           <div className="grid gap-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <p className="text-sm text-[#77758a]">
-                Project font <span className="font-semibold text-[#1d1b2a]">{fontForm.family}</span>{" "}
-                <span className="mx-2">/</span> Boopi mobile app type scale
+                Project font <span className="font-semibold text-[#1d1b2a]">{projectFontFamily}</span>{" "}
+                <span className="mx-2">/</span> weights 200, 300, 400, 500, 600, 700, 800, 900
               </p>
-              <Button type="button" onClick={resetTypographyForm} className="gap-2 bg-[#5146ff] hover:bg-[#4338e8]">
+              <Button type="button" onClick={() => openTypographyEditor()} className="gap-2 bg-[#5146ff] hover:bg-[#4338e8]">
                 <Plus className="h-4 w-4" /> New type token
               </Button>
             </div>
 
-            <form onSubmit={handleTypographySubmit} className="grid gap-4 rounded-lg border border-[#ebe7df] bg-white p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-bold">{editingTypographyId ? "Edit type token" : "New type token"}</h2>
-                  <p className="text-sm text-[#77758a]">Create reusable text styles for Boopi app screens.</p>
-                </div>
-                {editingTypographyId && (
-                  <Button type="button" variant="outline" onClick={resetTypographyForm}>
-                    Cancel
-                  </Button>
-                )}
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-5">
-                <div className="grid gap-2 md:col-span-2">
-                  <Label htmlFor="type_name">Name</Label>
-                  <Input
-                    id="type_name"
-                    placeholder="Display Large"
-                    value={typographyForm.name}
-                    onChange={(event) => setTypographyForm({ ...typographyForm, name: event.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="type_size">Size px</Label>
-                  <Input
-                    id="type_size"
-                    type="number"
-                    value={typographyForm.size}
-                    onChange={(event) => setTypographyForm({ ...typographyForm, size: event.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="type_line_height">Line height</Label>
-                  <Input
-                    id="type_line_height"
-                    value={typographyForm.lineHeight}
-                    onChange={(event) => setTypographyForm({ ...typographyForm, lineHeight: event.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="type_weight">Weight</Label>
-                  <select
-                    id="type_weight"
-                    className="h-10 rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                    value={typographyForm.weight}
-                    onChange={(event) => setTypographyForm({ ...typographyForm, weight: event.target.value })}
-                  >
-                    {fontWeights.map((weight) => (
-                      <option key={weight} value={weight}>
-                        {weight}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-[1fr_220px]">
-                <div className="grid gap-2">
-                  <Label htmlFor="type_sample">Sample text</Label>
-                  <Input
-                    id="type_sample"
-                    value={typographyForm.sample}
-                    onChange={(event) => setTypographyForm({ ...typographyForm, sample: event.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="type_sort">Sort order</Label>
-                  <Input
-                    id="type_sort"
-                    type="number"
-                    value={typographyForm.sort_order}
-                    onChange={(event) => setTypographyForm({ ...typographyForm, sort_order: event.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="type_description">Description</Label>
-                <Input
-                  id="type_description"
-                  value={typographyForm.description}
-                  onChange={(event) => setTypographyForm({ ...typographyForm, description: event.target.value })}
-                />
-              </div>
-
-              <div className="flex justify-end">
-                <Button type="submit" disabled={saving} className="gap-2 bg-[#5146ff] hover:bg-[#4338e8]">
-                  <Plus className="h-4 w-4" /> {saving ? "Saving..." : editingTypographyId ? "Save type token" : "Create type token"}
-                </Button>
-              </div>
-            </form>
-
             {typographyCards.map((token, index) => (
-              <div key={token.token_key} className="rounded-lg border border-[#ebe7df] bg-white p-6">
+              <div
+                key={token.token_key}
+                onClick={() => openTypographyEditor(token)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openTypographyEditor(token);
+                  }
+                }}
+                className="rounded-lg border border-[#ebe7df] bg-white p-6 text-left transition-colors hover:border-[#d8d1c7]"
+              >
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-sm text-[#77758a]">{token.name}</p>
                     <p
                       className="mt-2"
                       style={{
-                        fontFamily: fontForm.family,
+                        fontFamily: projectFontFamily,
                         fontSize: `${token.size}px`,
                         lineHeight: token.lineHeight,
+                        letterSpacing: `${token.letterSpacing}px`,
                         fontWeight: Number(token.weight),
                       }}
                     >
@@ -972,21 +808,27 @@ export default function DesignSystemPage() {
                       {token.size}px <span className="mx-2">/</span> {token.lineHeight} <span className="mx-2">/</span> {token.weight}
                     </div>
                     {token.savedToken ? (
-                      <>
-                        <Button type="button" variant="outline" size="sm" onClick={() => handleTypographyEdit(token.savedToken!)}>
-                          Edit
-                        </Button>
-                        <Button type="button" variant="outline" size="icon" onClick={() => handleDelete(token.savedToken!.id)}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleDelete(token.savedToken!.id);
+                          }}
+                        >
                           <Trash2 className="h-4 w-4 text-red-600" />
                         </Button>
-                      </>
                     ) : (
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         disabled={saving}
-                        onClick={() => saveTypographySeed(typographySeeds[index], index)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          saveTypographySeed(typographySeeds[index], index);
+                        }}
                       >
                         Save
                       </Button>
@@ -995,6 +837,136 @@ export default function DesignSystemPage() {
                 </div>
               </div>
             ))}
+
+            {typographyModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4">
+                <form onSubmit={handleTypographySubmit} className="w-full max-w-[740px] rounded-2xl border border-[#ebe7df] bg-white p-8 shadow-2xl">
+                  <div className="flex items-start justify-between gap-6">
+                    <div>
+                      <h2 className="text-2xl font-bold">Edit typography token</h2>
+                      <p className="mt-3 text-sm text-[#77758a]">Uses the project font, {projectFontFamily}.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetTypographyForm();
+                        setTypographyModalOpen(false);
+                      }}
+                      className="rounded-md p-1 text-[#9a98a8] hover:bg-[#f5f3ef]"
+                      aria-label="Close typography editor"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  <div className="mt-6 grid gap-2">
+                    <Label htmlFor="type_name">Name</Label>
+                    <Input
+                      id="type_name"
+                      value={typographyForm.name}
+                      onChange={(event) => setTypographyForm({ ...typographyForm, name: event.target.value })}
+                    />
+                    <p className="font-mono text-sm text-[#aaa6b6]">
+                      {editingTypographyKey || typographyKey(typographyForm.name || "new-token")}
+                    </p>
+                  </div>
+
+                  <div className="mt-6 rounded-lg border border-[#ebe7df] bg-[#fffdfa] p-8 text-center">
+                    <p
+                      style={{
+                        fontFamily: projectFontFamily,
+                        fontSize: `${typographyForm.size || 16}px`,
+                        lineHeight: typographyForm.lineHeight || 1.5,
+                        letterSpacing: `${typographyForm.letterSpacing || 0}px`,
+                        fontWeight: Number(typographyForm.weight || 400),
+                      }}
+                    >
+                      {typographyForm.sample || "Keep the pace"}
+                    </p>
+                  </div>
+
+                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="type_size">Size</Label>
+                      <div className="relative">
+                        <Input
+                          id="type_size"
+                          type="number"
+                          value={typographyForm.size}
+                          onChange={(event) => setTypographyForm({ ...typographyForm, size: event.target.value })}
+                          className="pr-10"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#aaa6b6]">px</span>
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="type_line_height">Line height</Label>
+                      <Input
+                        id="type_line_height"
+                        value={typographyForm.lineHeight}
+                        onChange={(event) => setTypographyForm({ ...typographyForm, lineHeight: event.target.value })}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="type_letter_spacing">Letter spacing</Label>
+                      <div className="relative">
+                        <Input
+                          id="type_letter_spacing"
+                          type="number"
+                          step="0.01"
+                          value={typographyForm.letterSpacing}
+                          onChange={(event) => setTypographyForm({ ...typographyForm, letterSpacing: event.target.value })}
+                          className="pr-10"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#aaa6b6]">px</span>
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="type_weight">Weight</Label>
+                      <select
+                        id="type_weight"
+                        className="h-10 rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                        value={typographyForm.weight}
+                        onChange={(event) => setTypographyForm({ ...typographyForm, weight: event.target.value })}
+                      >
+                        {fontWeights.map(([weight, label]) => (
+                          <option key={weight} value={weight}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-2">
+                    <Label htmlFor="type_sample">Sample text</Label>
+                    <Input
+                      id="type_sample"
+                      value={typographyForm.sample}
+                      onChange={(event) => setTypographyForm({ ...typographyForm, sample: event.target.value })}
+                    />
+                  </div>
+
+                  <p className="mt-4 text-sm text-[#aaa6b6]">Weights come from the project font settings.</p>
+
+                  <div className="mt-6 flex justify-end gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        resetTypographyForm();
+                        setTypographyModalOpen(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={saving} className="bg-[#5146ff] hover:bg-[#4338e8]">
+                      {saving ? "Saving..." : "Save changes"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         )}
 
