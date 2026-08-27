@@ -1330,8 +1330,8 @@ export default function DesignSystemPage() {
 
             {presetModalOpen && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-                <form onSubmit={handlePresetSubmit} className="flex h-[min(900px,calc(100vh-40px))] w-full max-w-[calc(100vw-40px)] flex-col overflow-hidden rounded-2xl border border-[#ebe7df] bg-white shadow-2xl">
-                  <div className="flex shrink-0 items-start justify-between border-b border-[#ebe7df] px-8 py-5">
+                <form onSubmit={handlePresetSubmit} className="flex h-[min(860px,calc(100vh-40px))] w-full max-w-[calc(100vw-40px)] flex-col overflow-hidden rounded-2xl border border-[#ebe7df] bg-white shadow-2xl">
+                  <div className="flex shrink-0 items-start justify-between border-b border-[#ebe7df] px-8 py-4">
                     <div>
                       <h2 className="text-2xl font-bold">{editingId ? "Edit preset" : "New preset"}</h2>
                       <p className="mt-1 text-sm text-[#77758a]">Create reusable styling for a canvas element.</p>
@@ -1394,8 +1394,8 @@ export default function DesignSystemPage() {
                         </div>
                       </div>
 
-                      <div className="flex min-h-0 overflow-auto bg-[#f7f6f2] p-10">
-                        <div className="mx-auto flex min-h-[430px] w-[260px] shrink-0 items-center justify-center self-center rounded-lg border border-[#ebe7df] bg-white shadow-sm">
+                      <div className="flex min-h-0 overflow-auto bg-[#f7f6f2] p-8">
+                        <div className="mx-auto flex min-h-[400px] w-[260px] shrink-0 items-center justify-center self-center rounded-lg border border-[#ebe7df] bg-white shadow-sm">
                           {formData.group_name === "Progress Bar" ? (
                             <div
                               className="h-5 w-40 overflow-hidden"
@@ -1429,7 +1429,7 @@ export default function DesignSystemPage() {
                       </div>
                     </div>
 
-                    <div className="min-h-0 overflow-y-auto border-l border-[#ebe7df] bg-white">
+                    <div key={`${editingId || "new"}-${formData.group_name}`} className="min-h-0 overflow-y-auto border-l border-[#ebe7df] bg-white">
                       <div className="border-b border-[#ebe7df] p-6">
                         <p className="mb-5 text-xs font-bold uppercase tracking-[0.12em] text-[#aaa6b6]">Style</p>
 
@@ -1525,7 +1525,7 @@ export default function DesignSystemPage() {
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 justify-end gap-3 border-t border-[#ebe7df] bg-white px-8 py-5">
+                  <div className="flex shrink-0 justify-end gap-3 border-t border-[#ebe7df] bg-white px-8 py-4">
                     <Button
                       type="button"
                       variant="outline"
