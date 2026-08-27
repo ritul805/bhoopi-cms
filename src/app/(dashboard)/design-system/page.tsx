@@ -1329,9 +1329,9 @@ export default function DesignSystemPage() {
             </div>
 
             {presetModalOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-5">
-                <form onSubmit={handlePresetSubmit} className="flex h-[82vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-2xl border border-[#ebe7df] bg-white shadow-2xl">
-                  <div className="flex items-start justify-between border-b border-[#ebe7df] px-8 py-5">
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+                <form onSubmit={handlePresetSubmit} className="flex h-[min(900px,calc(100vh-40px))] w-full max-w-[calc(100vw-40px)] flex-col overflow-hidden rounded-2xl border border-[#ebe7df] bg-white shadow-2xl">
+                  <div className="flex shrink-0 items-start justify-between border-b border-[#ebe7df] px-8 py-5">
                     <div>
                       <h2 className="text-2xl font-bold">{editingId ? "Edit preset" : "New preset"}</h2>
                       <p className="mt-1 text-sm text-[#77758a]">Create reusable styling for a canvas element.</p>
@@ -1349,8 +1349,8 @@ export default function DesignSystemPage() {
                     </button>
                   </div>
 
-                  <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr_360px]">
-                    <div className="overflow-y-auto border-r border-[#ebe7df] p-4">
+                  <div className="grid min-h-0 flex-1 grid-cols-[260px_minmax(420px,1fr)_390px] overflow-hidden">
+                    <div className="min-h-0 overflow-y-auto border-r border-[#ebe7df] p-4">
                       <p className="mb-3 px-3 text-xs font-bold uppercase tracking-[0.12em] text-[#aaa6b6]">Element type</p>
                       {presetCategories.slice(1).map(([label, Icon]) => (
                         <button
@@ -1366,8 +1366,8 @@ export default function DesignSystemPage() {
                       ))}
                     </div>
 
-                    <div className="grid min-h-0 grid-rows-[auto_1fr]">
-                      <div className="grid gap-4 border-b border-[#ebe7df] px-6 py-5 md:grid-cols-[1fr_auto]">
+                    <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
+                      <div className="grid items-start gap-5 border-b border-[#ebe7df] px-6 py-5 md:grid-cols-[minmax(0,1fr)_220px]">
                         <div className="grid gap-2">
                           <Label htmlFor="preset_name">Preset name</Label>
                           <Input
@@ -1394,8 +1394,8 @@ export default function DesignSystemPage() {
                         </div>
                       </div>
 
-                      <div className="flex min-h-0 items-center justify-center bg-[#f7f6f2] p-8">
-                        <div className="flex h-[430px] w-[260px] items-center justify-center rounded-lg border border-[#ebe7df] bg-white shadow-sm">
+                      <div className="flex min-h-0 overflow-auto bg-[#f7f6f2] p-10">
+                        <div className="mx-auto flex min-h-[430px] w-[260px] shrink-0 items-center justify-center self-center rounded-lg border border-[#ebe7df] bg-white shadow-sm">
                           {formData.group_name === "Progress Bar" ? (
                             <div
                               className="h-5 w-40 overflow-hidden"
@@ -1429,7 +1429,7 @@ export default function DesignSystemPage() {
                       </div>
                     </div>
 
-                    <div className="overflow-y-auto border-l border-[#ebe7df] bg-white">
+                    <div className="min-h-0 overflow-y-auto border-l border-[#ebe7df] bg-white">
                       <div className="border-b border-[#ebe7df] p-6">
                         <p className="mb-5 text-xs font-bold uppercase tracking-[0.12em] text-[#aaa6b6]">Style</p>
 
@@ -1525,7 +1525,7 @@ export default function DesignSystemPage() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-3 border-t border-[#ebe7df] px-8 py-5">
+                  <div className="flex shrink-0 justify-end gap-3 border-t border-[#ebe7df] bg-white px-8 py-5">
                     <Button
                       type="button"
                       variant="outline"
