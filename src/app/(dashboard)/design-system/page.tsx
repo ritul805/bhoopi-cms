@@ -332,6 +332,36 @@ function parsePresetValue(value: string) {
   }
 }
 
+function presetDefaultsForCategory(category: string) {
+  const defaults = { ...defaultPresetValue };
+
+  switch (category) {
+    case "Text":
+      return { ...defaults, background: "#FFFFFF", foreground: "#1D1B2A", radius: "0", padding: "0", fillMode: "none", trackMode: "solid" };
+    case "Image":
+      return { ...defaults, background: "#E8DEF8", foreground: "#6750A4", radius: "12", padding: "0", trackMode: "solid" };
+    case "Video":
+      return { ...defaults, background: "#1D1B2A", foreground: "#FFFFFF", radius: "14", padding: "0", trackMode: "solid" };
+    case "Carousel":
+      return { ...defaults, background: "#EADDFF", foreground: "#21005D", radius: "12", padding: "8", trackMode: "solid" };
+    case "Stories":
+      return { ...defaults, background: "#24325F", foreground: "#FFFFFF", radius: "16", padding: "12", trackMode: "solid" };
+    case "Progress":
+    case "Progress Bar":
+      return { ...defaults, foreground: "#4945FF", track: "#E0E0E0", radius: "4", padding: "0", fillMode: "solid", trackMode: "solid" };
+    case "Divider":
+      return { ...defaults, background: "#FFFFFF", foreground: "#79747E", radius: "0", padding: "0", fillMode: "none", trackMode: "solid" };
+    case "Dialog":
+      return { ...defaults, background: "#FFFFFF", foreground: "#1D1B2A", radius: "20", padding: "20", trackMode: "solid" };
+    case "Tooltip":
+      return { ...defaults, background: "#1D1B2A", foreground: "#FFFFFF", radius: "8", padding: "10", trackMode: "solid" };
+    case "Button":
+      return { ...defaults, background: "#4945FF", foreground: "#FFFFFF", radius: "12", padding: "14", trackMode: "solid" };
+    default:
+      return defaults;
+  }
+}
+
 function presetNameFromKey(tokenKey: string) {
   return tokenName(tokenKey.replace(/^preset\.[^.]+\./, ""));
 }
@@ -436,6 +466,130 @@ export default function DesignSystemPage() {
   const presetFillField: PresetValueKey = isProgressPreset ? "foreground" : "background";
   const presetSecondaryField: PresetValueKey = isProgressPreset ? "track" : "foreground";
   const presetSecondaryLabel = isProgressPreset ? "Track" : "Content";
+  const renderPresetPreview = (category: string | null, value: ReturnType<typeof parsePresetValue>, compact = false) => {
+    const fillBackground =
+      value.fillMode === "none"
+        ? "transparent"
+        : value.fillMode === "gradient"
+          ? `linear-gradient(135deg, ${value.background}, ${value.foreground})`
+          : value.background;
+    const secondaryColor = value.trackMode === "none" ? "transparent" : value.foreground;
+    const trackBackground =
+      value.trackMode === "none"
+        ? "transparent"
+        : value.trackMode === "gradient"
+          ? `linear-gradient(135deg, ${value.track}, ${value.foreground})`
+          : value.track;
+    const progressFillBackground =
+      value.fillMode === "none"
+        ? "transparent"
+        : value.fillMode === "gradient"
+          ? `linear-gradient(90deg, ${value.foreground}, ${value.background})`
+          : value.foreground;
+    const baseStyle = {
+      background: fillBackground,
+      color: secondaryColor,
+      borderRadius: `${value.radius}px`,
+      padding: `${value.padding}px`,
+    };
+
+    switch (category) {
+      case "Text":
+        return (
+          <div className={compact ? "text-xl font-semibold" : "text-3xl font-semibold"} style={{ color: secondaryColor }}>
+            Sample text
+          </div>
+        );
+      case "Image":
+        return (
+          <div className={`${compact ? "h-20 w-32" : "h-24 w-40"} flex items-center justify-center border border-[#ded9cf]`} style={baseStyle}>
+            <ImageIcon className="h-7 w-7" />
+          </div>
+        );
+      case "Video":
+        return (
+          <div className={`${compact ? "h-20 w-36" : "h-28 w-44"} flex items-center justify-center border border-[#ded9cf]`} style={baseStyle}>
+            <span className="rounded-full bg-white/20 px-3 py-2 text-sm font-semibold">Play</span>
+          </div>
+        );
+      case "Carousel":
+        return (
+          <div className="flex items-center gap-2">
+            {[0, 1, 2].map((item) => (
+              <div
+                key={item}
+                className={`${compact ? "h-16 w-12" : "h-24 w-16"} border border-[#ded9cf]`}
+                style={{ ...baseStyle, opacity: item === 1 ? 1 : 0.55 }}
+              />
+            ))}
+          </div>
+        );
+      case "Stories":
+        return (
+          <div className={`${compact ? "h-24 w-20" : "h-32 w-24"} flex items-end border border-[#ded9cf] text-xs font-semibold`} style={baseStyle}>
+            Story
+          </div>
+        );
+      case "Divider":
+        return <div className="h-px w-40" style={{ background: secondaryColor }} />;
+      case "Progress":
+      case "Progress Bar":
+        return (
+          <div className={`${compact ? "h-4 w-40" : "h-5 w-44"} overflow-hidden`} style={{ background: trackBackground, borderRadius: `${value.radius}px` }}>
+            <div className="h-full w-2/3" style={{ background: progressFillBackground, borderRadius: `${value.radius}px` }} />
+          </div>
+        );
+      case "Lottie":
+        return (
+          <div className={`${compact ? "h-20 w-20" : "h-24 w-24"} flex items-center justify-center border border-[#ded9cf]`} style={baseStyle}>
+            <Sparkles className="h-8 w-8" />
+          </div>
+        );
+      case "Close":
+        return (
+          <div className="flex h-12 w-12 items-center justify-center border border-[#ded9cf]" style={baseStyle}>
+            <X className="h-5 w-5" />
+          </div>
+        );
+      case "Mute":
+        return (
+          <div className="border border-[#ded9cf] text-sm font-semibold" style={baseStyle}>
+            Mute
+          </div>
+        );
+      case "Bottom sheet":
+        return (
+          <div className={`${compact ? "h-24 w-32" : "h-32 w-44"} flex items-end rounded-lg border border-[#ded9cf] bg-white`}>
+            <div className="h-2/3 w-full rounded-t-2xl border-t border-[#ded9cf]" style={baseStyle} />
+          </div>
+        );
+      case "Dialog":
+        return (
+          <div className={`${compact ? "h-20 w-32" : "h-28 w-44"} border border-[#ded9cf] shadow-sm`} style={baseStyle}>
+            Dialog
+          </div>
+        );
+      case "Tooltip":
+        return (
+          <div className="max-w-40 border border-[#ded9cf] text-xs font-medium" style={baseStyle}>
+            Tooltip text
+          </div>
+        );
+      case "Container":
+        return (
+          <div className={`${compact ? "h-20 w-32" : "h-28 w-44"} border border-[#ded9cf]`} style={baseStyle}>
+            Container
+          </div>
+        );
+      case "Button":
+      default:
+        return (
+          <div className="inline-flex min-h-12 min-w-32 items-center justify-center border border-[#ded9cf] text-sm font-semibold" style={baseStyle}>
+            Button
+          </div>
+        );
+    }
+  };
 
   const fetchTokens = async () => {
     setLoading(true);
@@ -498,7 +652,7 @@ export default function DesignSystemPage() {
         token_type: "preset",
         group_name: category,
         description: "",
-        token_value: JSON.stringify(defaultPresetValue),
+        token_value: JSON.stringify(presetDefaultsForCategory(category)),
       });
       return;
     }
@@ -817,7 +971,7 @@ export default function DesignSystemPage() {
       token_type: "preset",
       group_name: nextCategory,
       description: "",
-      token_value: JSON.stringify(defaultPresetValue),
+      token_value: JSON.stringify(presetDefaultsForCategory(nextCategory)),
     });
     setPresetModalOpen(true);
   };
@@ -1279,7 +1433,6 @@ export default function DesignSystemPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   {visiblePresetTokens.map((preset) => {
                     const value = parsePresetValue(preset.token_value);
-                    const isProgress = preset.group_name === "Progress Bar";
                     return (
                       <div key={preset.id} className="rounded-lg border border-[#ebe7df] bg-white p-5">
                         <div className="flex items-start justify-between gap-4">
@@ -1296,30 +1449,8 @@ export default function DesignSystemPage() {
                             </Button>
                           </div>
                         </div>
-                        <div className="mt-5 rounded-lg border border-[#ded9cf] bg-[#fffdfa] p-5">
-                          {isProgress ? (
-                            <div
-                              className="h-4 w-40 overflow-hidden rounded-sm"
-                              style={{ backgroundColor: value.track, borderRadius: `${value.radius}px` }}
-                            >
-                              <div
-                                className="h-full w-2/3"
-                                style={{ backgroundColor: value.foreground, borderRadius: `${value.radius}px` }}
-                              />
-                            </div>
-                          ) : (
-                            <div
-                              className="inline-flex min-h-12 min-w-32 items-center justify-center border border-[#ded9cf] text-sm font-medium"
-                              style={{
-                                backgroundColor: value.background,
-                                color: value.foreground,
-                                borderRadius: `${value.radius}px`,
-                                padding: `${value.padding}px`,
-                              }}
-                            >
-                              {preset.group_name}
-                            </div>
-                          )}
+                        <div className="mt-5 flex min-h-28 items-center justify-center rounded-lg border border-[#ded9cf] bg-[#fffdfa] p-5">
+                          {renderPresetPreview(preset.group_name, value, true)}
                         </div>
                       </div>
                     );
@@ -1356,7 +1487,13 @@ export default function DesignSystemPage() {
                         <button
                           key={label}
                           type="button"
-                          onClick={() => setFormData({ ...formData, group_name: label })}
+                          onClick={() =>
+                            setFormData({
+                              ...formData,
+                              group_name: label,
+                              token_value: editingId ? formData.token_value : JSON.stringify(presetDefaultsForCategory(label)),
+                            })
+                          }
                           className={`mb-1 flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium ${
                             formData.group_name === label ? "bg-[#5146ff] text-white ring-2 ring-[#7b72ff]" : "text-[#77758a] hover:bg-[#faf8f3]"
                           }`}
@@ -1396,35 +1533,7 @@ export default function DesignSystemPage() {
 
                       <div className="flex min-h-0 overflow-auto bg-[#f7f6f2] p-8">
                         <div className="mx-auto flex min-h-[400px] w-[260px] shrink-0 items-center justify-center self-center rounded-lg border border-[#ebe7df] bg-white shadow-sm">
-                          {formData.group_name === "Progress Bar" ? (
-                            <div
-                              className="h-5 w-40 overflow-hidden"
-                              style={{
-                                backgroundColor: currentPresetValue.track,
-                                borderRadius: `${currentPresetValue.radius}px`,
-                              }}
-                            >
-                              <div
-                                className="h-full w-2/3"
-                                style={{
-                                  backgroundColor: currentPresetValue.foreground,
-                                  borderRadius: `${currentPresetValue.radius}px`,
-                                }}
-                              />
-                            </div>
-                          ) : (
-                            <div
-                              className="min-h-20 w-44 border border-[#ded9cf] text-center text-sm"
-                              style={{
-                                backgroundColor: currentPresetValue.background,
-                                color: currentPresetValue.foreground,
-                                borderRadius: `${currentPresetValue.radius}px`,
-                                padding: `${currentPresetValue.padding}px`,
-                              }}
-                            >
-                              {formData.group_name || "Boopi preset"}
-                            </div>
-                          )}
+                          {renderPresetPreview(formData.group_name, currentPresetValue)}
                         </div>
                       </div>
                     </div>
