@@ -136,6 +136,10 @@ const boopiDarkColorSeeds = [
   ["Card Text", "home.card.text.primary", "#FFFFFF", "Text over dark story cards."],
 ] as const;
 
+function defaultColorForTheme(theme: ThemeKey) {
+  return theme === "dark" ? boopiDarkColorSeeds[0][2] : boopiColorSeeds[0][2];
+}
+
 const typographySeeds = [
   ["Display Large", "typography.display-large", "57", "1.12", "-0.25", "400"],
   ["Display Medium", "typography.display-medium", "45", "1.16", "0", "400"],
@@ -728,7 +732,7 @@ export default function DesignSystemPage() {
       token_type: tab === "typography" ? "typography" : "color",
       group_name: tab === "colors" ? "boopi" : tab,
       theme: tab === "colors" ? activeTheme : "global",
-      token_value: tab === "colors" ? "#6750a4" : "",
+      token_value: tab === "colors" ? defaultColorForTheme(activeTheme) : "",
     });
   };
 
@@ -1135,6 +1139,7 @@ export default function DesignSystemPage() {
                           token_type: "color",
                           group_name: "boopi",
                           theme,
+                          token_value: defaultColorForTheme(theme),
                         });
                       }}
                       className={`rounded-full px-4 py-1.5 font-medium capitalize ${
