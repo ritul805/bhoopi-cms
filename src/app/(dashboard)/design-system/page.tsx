@@ -417,6 +417,46 @@ export default function DesignSystemPage() {
     fetchTokens();
   };
 
+  const saveColorCard = async (
+    token: {
+      token_key: string;
+      token_value: string;
+      description: string | null;
+      savedToken: DesignToken | null;
+    },
+    index: number,
+    nextValue: string
+  ) => {
+    const normalizedValue = nextValue.trim().startsWith("#") ? nextValue.trim() : `#${nextValue.trim()}`;
+    if (!isHexColor(normalizedValue)) {
+      alert("Please enter a valid hex color.");
+      return;
+    }
+    if (normalizedValue.toLowerCase() === token.token_value.toLowerCase()) return;
+
+    setSaving(true);
+    const payload = {
+      token_key: token.token_key,
+      token_value: normalizedValue.toUpperCase(),
+      token_type: "color",
+      group_name: "boopi",
+      description: token.description || null,
+      sort_order: index,
+      is_active: true,
+    };
+
+    const { error } = token.savedToken
+      ? await supabase.from("design_tokens").update(payload).eq("id", token.savedToken.id)
+      : await supabase.from("design_tokens").insert([payload]);
+
+    setSaving(false);
+    if (error) {
+      alert(`Could not save ${token.token_key}: ${error.message}`);
+      return;
+    }
+    fetchTokens();
+  };
+
   const resetTypographyForm = () => {
     setEditingTypographyId(null);
     setEditingTypographyKey(null);
@@ -728,32 +768,47 @@ export default function DesignSystemPage() {
                       )}
                     </div>
                     <p className="mt-5 text-sm text-[#77758a]">Light</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (token.savedToken) {
-                          handleEdit(token.savedToken);
-                          return;
-                        }
-                        setEditingId(null);
-                        setFormData({
-                          token_key: token.token_key,
-                          token_value: token.token_value,
-                          token_type: "color",
-                          group_name: "boopi",
-                          description: token.description || "",
-                          sort_order: String(token.sort_order || 0),
-                          is_active: true,
-                        });
-                      }}
-                      className="mt-2 grid h-12 w-full grid-cols-[56px_1fr_78px] overflow-hidden rounded-lg border border-[#ded9cf] bg-[#fffdfa] text-left"
-                    >
+                    <div className="mt-2 grid h-12 w-full grid-cols-[56px_1fr_78px] overflow-hidden rounded-lg border border-[#ded9cf] bg-[#fffdfa] text-left">
                       <span className="flex items-center justify-center border-r border-[#ded9cf]">
-                        <span className="h-7 w-7 rounded-md border border-[#ded9cf]" style={{ backgroundColor: token.token_value }} />
+                        <input
+                          key={`${token.token_key}-picker-${token.token_value}`}
+                          type="color"
+                          defaultValue={isHexColor(token.token_value) ? token.token_value : "#6750A4"}
+                          onChange={(event) => saveColorCard(token, index, event.target.value)}
+                          className="h-7 w-7 cursor-pointer rounded-md border border-[#ded9cf] bg-transparent p-0"
+                          aria-label={`Edit ${token.token_key} color`}
+                        />
                       </span>
-                      <span className="flex items-center px-4 font-mono text-sm uppercase">{token.token_value.replace("#", "")}</span>
+                      <input
+                        key={`${token.token_key}-hex-${token.token_value}`}
+                        defaultValue={token.token_value.replace("#", "").toUpperCase()}
+                        onFocus={() => {
+                          if (token.savedToken) {
+                            handleEdit(token.savedToken);
+                            return;
+                          }
+                          setEditingId(null);
+                          setFormData({
+                            token_key: token.token_key,
+                            token_value: token.token_value,
+                            token_type: "color",
+                            group_name: "boopi",
+                            description: token.description || "",
+                            sort_order: String(token.sort_order || 0),
+                            is_active: true,
+                          });
+                        }}
+                        onBlur={(event) => saveColorCard(token, index, event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.currentTarget.blur();
+                          }
+                        }}
+                        className="min-w-0 bg-transparent px-4 font-mono text-sm uppercase outline-none focus:bg-white"
+                        aria-label={`Edit ${token.token_key} hex value`}
+                      />
                       <span className="flex items-center justify-center border-l border-[#ded9cf] text-sm text-[#77758a]">100%</span>
-                    </button>
+                    </div>
                   </div>
                 ))}
               </div>
