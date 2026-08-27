@@ -26,6 +26,7 @@ type DesignToken = {
   token_value: string;
   token_type: string;
   group_name: string | null;
+  theme: string | null;
   description: string | null;
   sort_order: number | null;
   is_active: boolean;
@@ -36,18 +37,21 @@ type DesignTokenPayload = {
   token_value: string;
   token_type: string;
   group_name: string;
+  theme: string;
   description: string | null;
   sort_order: number;
   is_active: boolean;
 };
 
 type TabKey = "colors" | "typography" | "presets";
+type ThemeKey = "light" | "dark";
 
 const defaultForm = {
   token_key: "",
   token_value: "#6750a4",
   token_type: "color",
   group_name: "boopi",
+  theme: "light",
   description: "",
   sort_order: "0",
   is_active: true,
@@ -108,6 +112,28 @@ const boopiColorSeeds = [
   ["Home Bottom", "home.background.bottom", "#17234F", "Bottom of Boopi home gradient."],
   ["Player Primary", "player.background.primary", "#58AAF0", "Story player screen color."],
   ["Card Text", "home.card.text.primary", "#FFFFFF", "Text over story cards."],
+] as const;
+
+const boopiDarkColorSeeds = [
+  ["Primary", "color.primary", "#D0BCFF", "Main Boopi action color in dark theme."],
+  ["On Primary", "color.on-primary", "#381E72", "Text and icons on dark primary."],
+  ["Primary Container", "color.primary-container", "#4F378B", "Dark primary container backgrounds."],
+  ["On Primary Container", "color.on-primary-container", "#EADDFF", "Text on dark primary containers."],
+  ["Secondary", "color.secondary", "#CCC2DC", "Secondary dark actions and accents."],
+  ["On Secondary", "color.on-secondary", "#332D41", "Text and icons on dark secondary."],
+  ["Secondary Container", "color.secondary-container", "#4A4458", "Dark secondary container backgrounds."],
+  ["On Secondary Container", "color.on-secondary-container", "#E8DEF8", "Text on dark secondary containers."],
+  ["Surface", "color.surface", "#141218", "Dark app and card surfaces."],
+  ["On Surface", "color.on-surface", "#E6E0E9", "Primary text on dark surfaces."],
+  ["Surface Variant", "color.surface-variant", "#49454F", "Muted dark surface backgrounds."],
+  ["On Surface Variant", "color.on-surface-variant", "#CAC4D0", "Muted text on dark surfaces."],
+  ["Outline", "color.outline", "#938F99", "Dark borders and separators."],
+  ["Error", "color.error", "#F2B8B5", "Dark destructive and error states."],
+  ["Home Top", "home.background.top", "#111827", "Top of Boopi dark home gradient."],
+  ["Home Middle", "home.background.middle", "#1F2A44", "Middle of Boopi dark home gradient."],
+  ["Home Bottom", "home.background.bottom", "#080D1F", "Bottom of Boopi dark home gradient."],
+  ["Player Primary", "player.background.primary", "#2F80ED", "Dark story player screen color."],
+  ["Card Text", "home.card.text.primary", "#FFFFFF", "Text over dark story cards."],
 ] as const;
 
 const typographySeeds = [
@@ -228,6 +254,17 @@ const defaultDesignTokens: DesignTokenPayload[] = [
     token_value: value,
     token_type: "color",
     group_name: "boopi",
+    theme: "light",
+    description,
+    sort_order: index,
+    is_active: true,
+  })),
+  ...boopiDarkColorSeeds.map(([, key, value, description], index) => ({
+    token_key: key,
+    token_value: value,
+    token_type: "color",
+    group_name: "boopi",
+    theme: "dark",
     description,
     sort_order: index,
     is_active: true,
@@ -243,6 +280,7 @@ const defaultDesignTokens: DesignTokenPayload[] = [
     }),
     token_type: "typography",
     group_name: "typography",
+    theme: "global",
     description: `${name} type token for Boopi app screens.`,
     sort_order: index,
     is_active: true,
@@ -252,6 +290,7 @@ const defaultDesignTokens: DesignTokenPayload[] = [
     token_value: JSON.stringify(value),
     token_type: "preset",
     group_name: groupName,
+    theme: "global",
     description,
     sort_order: index,
     is_active: true,
@@ -368,6 +407,7 @@ function presetNameFromKey(tokenKey: string) {
 
 export default function DesignSystemPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("colors");
+  const [activeTheme, setActiveTheme] = useState<ThemeKey>("light");
   const [tokens, setTokens] = useState<DesignToken[]>([]);
   const [formData, setFormData] = useState(defaultForm);
   const [typographyForm, setTypographyForm] = useState({
@@ -390,9 +430,10 @@ export default function DesignSystemPage() {
   );
 
   const colorCards = useMemo(() => {
-    const savedByKey = new Map(colorTokens.map((token) => [token.token_key, token]));
-    return boopiColorSeeds.map(([name, key, value, description], index) => {
-      const saved = savedByKey.get(key);
+    const savedByKey = new Map(colorTokens.map((token) => [`${token.theme || "light"}:${token.token_key}`, token]));
+    const seeds = activeTheme === "dark" ? boopiDarkColorSeeds : boopiColorSeeds;
+    return seeds.map(([name, key, value, description], index) => {
+      const saved = savedByKey.get(`${activeTheme}:${key}`);
       return {
         id: saved?.id || key,
         name: tokenName(key) || name,
@@ -404,7 +445,7 @@ export default function DesignSystemPage() {
         savedToken: saved || null,
       };
     });
-  }, [colorTokens]);
+  }, [activeTheme, colorTokens]);
 
   const presetTokens = useMemo(
     () => tokens.filter((token) => token.token_type === "preset"),
@@ -617,8 +658,9 @@ export default function DesignSystemPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("design_tokens")
-      .select("id, token_key, token_value, token_type, group_name, description, sort_order, is_active")
+      .select("id, token_key, token_value, token_type, group_name, theme, description, sort_order, is_active")
       .order("group_name", { ascending: true })
+      .order("theme", { ascending: true })
       .order("sort_order", { ascending: true })
       .order("token_key", { ascending: true });
 
@@ -627,13 +669,13 @@ export default function DesignSystemPage() {
       alert("Could not load design tokens. Please run the design system SQL first.");
     } else {
       const existingTokens = data || [];
-      const existingKeys = new Set(existingTokens.map((token) => token.token_key));
-      const missingDefaults = defaultDesignTokens.filter((token) => !existingKeys.has(token.token_key));
+      const existingKeys = new Set(existingTokens.map((token) => `${token.token_key}:${token.theme || "light"}`));
+      const missingDefaults = defaultDesignTokens.filter((token) => !existingKeys.has(`${token.token_key}:${token.theme}`));
 
       if (missingDefaults.length > 0) {
         const { error: seedError } = await supabase
           .from("design_tokens")
-          .upsert(missingDefaults, { onConflict: "token_key", ignoreDuplicates: true });
+          .upsert(missingDefaults, { onConflict: "token_key,theme", ignoreDuplicates: true });
 
         if (seedError) {
           console.error("Error seeding default design tokens:", seedError);
@@ -641,8 +683,9 @@ export default function DesignSystemPage() {
         } else {
           const { data: seededData, error: refetchError } = await supabase
             .from("design_tokens")
-            .select("id, token_key, token_value, token_type, group_name, description, sort_order, is_active")
+            .select("id, token_key, token_value, token_type, group_name, theme, description, sort_order, is_active")
             .order("group_name", { ascending: true })
+            .order("theme", { ascending: true })
             .order("sort_order", { ascending: true })
             .order("token_key", { ascending: true });
 
@@ -673,6 +716,7 @@ export default function DesignSystemPage() {
         token_key: "",
         token_type: "preset",
         group_name: category,
+        theme: "global",
         description: "",
         token_value: JSON.stringify(presetDefaultsForCategory(category)),
       });
@@ -683,6 +727,7 @@ export default function DesignSystemPage() {
       ...defaultForm,
       token_type: tab === "typography" ? "typography" : "color",
       group_name: tab === "colors" ? "boopi" : tab,
+      theme: tab === "colors" ? activeTheme : "global",
       token_value: tab === "colors" ? "#6750a4" : "",
     });
   };
@@ -700,6 +745,7 @@ export default function DesignSystemPage() {
       token_value: token.token_value,
       token_type: token.token_type,
       group_name: token.group_name || "boopi",
+      theme: token.theme || "light",
       description: token.description || "",
       sort_order: String(token.sort_order || 0),
       is_active: token.is_active,
@@ -711,6 +757,9 @@ export default function DesignSystemPage() {
             ? "presets"
             : "colors"
     );
+    if (token.token_type === "color" && (token.theme === "light" || token.theme === "dark")) {
+      setActiveTheme(token.theme);
+    }
     if (token.token_type === "preset" && token.group_name) {
       setSelectedPresetCategory(token.group_name);
       setPresetModalOpen(true);
@@ -730,6 +779,7 @@ export default function DesignSystemPage() {
       token_value: formData.token_value.trim(),
       token_type: formData.token_type.trim() || "color",
       group_name: formData.group_name.trim() || "boopi",
+      theme: activeTab === "colors" ? activeTheme : "global",
       description: formData.description.trim() || null,
       sort_order: Number(formData.sort_order || 0),
       is_active: formData.is_active,
@@ -750,7 +800,7 @@ export default function DesignSystemPage() {
     fetchTokens();
   };
 
-  const saveSeedToken = async (seed: (typeof boopiColorSeeds)[number], index: number) => {
+  const saveSeedToken = async (seed: (typeof boopiColorSeeds)[number] | (typeof boopiDarkColorSeeds)[number], index: number) => {
     setSaving(true);
     const [, key, value, description] = seed;
     const { error } = await supabase.from("design_tokens").insert([
@@ -759,6 +809,7 @@ export default function DesignSystemPage() {
         token_value: value,
         token_type: "color",
         group_name: "boopi",
+        theme: activeTheme,
         description,
         sort_order: index,
         is_active: true,
@@ -795,6 +846,7 @@ export default function DesignSystemPage() {
       token_value: normalizedValue.toUpperCase(),
       token_type: "color",
       group_name: "boopi",
+      theme: token.savedToken?.theme || activeTheme,
       description: token.description || null,
       sort_order: index,
       is_active: true,
@@ -875,6 +927,7 @@ export default function DesignSystemPage() {
       }),
       token_type: "typography",
       group_name: "typography",
+      theme: "global",
       description: typographyForm.description.trim() || null,
       sort_order: Number(typographyForm.sort_order || 0),
       is_active: true,
@@ -910,6 +963,7 @@ export default function DesignSystemPage() {
         }),
         token_type: "typography",
         group_name: "typography",
+        theme: "global",
         description: `${name} type token for Boopi app screens.`,
         sort_order: index,
         is_active: true,
@@ -939,6 +993,7 @@ export default function DesignSystemPage() {
       token_value: formData.token_value,
       token_type: "preset",
       group_name: formData.group_name || "Text",
+      theme: "global",
       description: formData.description.trim() || null,
       sort_order: Number(formData.sort_order || 0),
       is_active: formData.is_active,
@@ -992,6 +1047,7 @@ export default function DesignSystemPage() {
       token_key: "",
       token_type: "preset",
       group_name: nextCategory,
+      theme: "global",
       description: "",
       token_value: JSON.stringify(presetDefaultsForCategory(nextCategory)),
     });
@@ -1066,9 +1122,29 @@ export default function DesignSystemPage() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3 text-sm text-[#77758a]">
                 <span>Themes</span>
-                <span className="rounded-full border border-[#e4dfd5] bg-white px-4 py-2 font-medium text-[#1d1b2a]">
-                  Light
-                </span>
+                <div className="flex rounded-full border border-[#e4dfd5] bg-white p-1">
+                  {(["light", "dark"] as const).map((theme) => (
+                    <button
+                      key={theme}
+                      type="button"
+                      onClick={() => {
+                        setActiveTheme(theme);
+                        setEditingId(null);
+                        setFormData({
+                          ...defaultForm,
+                          token_type: "color",
+                          group_name: "boopi",
+                          theme,
+                        });
+                      }}
+                      className={`rounded-full px-4 py-1.5 font-medium capitalize ${
+                        activeTheme === theme ? "bg-[#1d1b2a] text-white" : "text-[#77758a] hover:text-[#1d1b2a]"
+                      }`}
+                    >
+                      {theme}
+                    </button>
+                  ))}
+                </div>
               </div>
               <Button type="button" onClick={() => resetForm("colors")} className="gap-2 bg-[#5146ff] hover:bg-[#4338e8]">
                 <Plus className="h-4 w-4" /> New color token
@@ -1146,7 +1222,7 @@ export default function DesignSystemPage() {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => saveSeedToken(boopiColorSeeds[index], index)}
+                          onClick={() => saveSeedToken(activeTheme === "dark" ? boopiDarkColorSeeds[index] : boopiColorSeeds[index], index)}
                           className="rounded-md p-1 text-[#5146ff] hover:bg-[#efedff]"
                           aria-label={`Create ${token.token_key}`}
                         >
@@ -1154,7 +1230,7 @@ export default function DesignSystemPage() {
                         </button>
                       )}
                     </div>
-                    <p className="mt-5 text-sm text-[#77758a]">Light</p>
+                    <p className="mt-5 text-sm text-[#77758a]">{activeTheme === "dark" ? "Dark" : "Light"}</p>
                     <div className="mt-2 grid h-12 w-full grid-cols-[56px_1fr_78px] overflow-hidden rounded-lg border border-[#ded9cf] bg-[#fffdfa] text-left">
                       <span className="flex items-center justify-center border-r border-[#ded9cf]">
                         <input
@@ -1180,6 +1256,7 @@ export default function DesignSystemPage() {
                             token_value: token.token_value,
                             token_type: "color",
                             group_name: "boopi",
+                            theme: activeTheme,
                             description: token.description || "",
                             sort_order: String(token.sort_order || 0),
                             is_active: true,
