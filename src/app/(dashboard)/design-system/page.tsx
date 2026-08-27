@@ -474,6 +474,19 @@ export default function DesignSystemPage() {
           ? `linear-gradient(135deg, ${value.background}, ${value.foreground})`
           : value.background;
     const secondaryColor = value.trackMode === "none" ? "transparent" : value.foreground;
+    const contentBackground =
+      value.trackMode === "gradient"
+        ? `linear-gradient(135deg, ${value.foreground}, ${value.background})`
+        : undefined;
+    const textContentStyle =
+      value.trackMode === "gradient"
+        ? {
+            background: contentBackground,
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+          }
+        : { color: secondaryColor };
     const trackBackground =
       value.trackMode === "none"
         ? "transparent"
@@ -496,8 +509,17 @@ export default function DesignSystemPage() {
     switch (category) {
       case "Text":
         return (
-          <div className={compact ? "text-xl font-semibold" : "text-3xl font-semibold"} style={{ color: secondaryColor }}>
-            Sample text
+          <div
+            className="inline-block"
+            style={{
+              background: fillBackground,
+              borderRadius: `${value.radius}px`,
+              padding: `${value.padding}px`,
+            }}
+          >
+            <span className={compact ? "text-xl font-semibold" : "text-3xl font-semibold"} style={textContentStyle}>
+              Sample text
+            </span>
           </div>
         );
       case "Image":
@@ -531,7 +553,7 @@ export default function DesignSystemPage() {
           </div>
         );
       case "Divider":
-        return <div className="h-px w-40" style={{ background: secondaryColor }} />;
+        return <div className="h-px w-40" style={{ background: value.trackMode === "gradient" ? contentBackground : secondaryColor }} />;
       case "Progress":
       case "Progress Bar":
         return (
