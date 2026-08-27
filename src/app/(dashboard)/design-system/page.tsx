@@ -64,6 +64,8 @@ const defaultPresetValue = {
   applicability: ["Nudge", "Guide"],
 };
 
+type PresetValueKey = "background" | "foreground" | "track" | "radius" | "padding" | "fillMode" | "trackMode";
+
 const projectFontFamily = "Canva sans";
 
 const fontWeights = [
@@ -146,6 +148,80 @@ const presetCategories = [
   ["Tooltip", CaseSensitive],
 ] as const;
 
+const presetSeeds = [
+  [
+    "Primary CTA",
+    "preset.button.primary-cta",
+    "Button",
+    {
+      ...defaultPresetValue,
+      background: "#4945FF",
+      foreground: "#FFFFFF",
+      radius: "12",
+      padding: "14",
+      trackMode: "none",
+    },
+    "Primary action button preset.",
+  ],
+  [
+    "Progress Bar",
+    "preset.progress-bar.primary",
+    "Progress Bar",
+    {
+      ...defaultPresetValue,
+      foreground: "#4945FF",
+      track: "#E0E0E0",
+      radius: "4",
+      padding: "0",
+    },
+    "Default Boopi progress bar preset.",
+  ],
+  [
+    "Story Card",
+    "preset.stories.card",
+    "Stories",
+    {
+      ...defaultPresetValue,
+      background: "#24325F",
+      foreground: "#FFFFFF",
+      radius: "16",
+      padding: "16",
+      trackMode: "none",
+      applicability: ["Guide"],
+    },
+    "Story card container preset.",
+  ],
+  [
+    "Dialog Surface",
+    "preset.dialog.surface",
+    "Dialog",
+    {
+      ...defaultPresetValue,
+      background: "#FFFFFF",
+      foreground: "#1D1B2A",
+      radius: "20",
+      padding: "20",
+      trackMode: "none",
+    },
+    "Default modal dialog surface preset.",
+  ],
+  [
+    "Tooltip Bubble",
+    "preset.tooltip.bubble",
+    "Tooltip",
+    {
+      ...defaultPresetValue,
+      background: "#1D1B2A",
+      foreground: "#FFFFFF",
+      radius: "8",
+      padding: "10",
+      trackMode: "none",
+      applicability: ["Nudge"],
+    },
+    "Compact tooltip preset.",
+  ],
+] as const;
+
 const defaultDesignTokens: DesignTokenPayload[] = [
   ...boopiColorSeeds.map(([, key, value, description], index) => ({
     token_key: key,
@@ -168,6 +244,15 @@ const defaultDesignTokens: DesignTokenPayload[] = [
     token_type: "typography",
     group_name: "typography",
     description: `${name} type token for Boopi app screens.`,
+    sort_order: index,
+    is_active: true,
+  })),
+  ...presetSeeds.map(([, key, groupName, value, description], index) => ({
+    token_key: key,
+    token_value: JSON.stringify(value),
+    token_type: "preset",
+    group_name: groupName,
+    description,
     sort_order: index,
     is_active: true,
   })),
@@ -245,6 +330,10 @@ function parsePresetValue(value: string) {
   } catch {
     return defaultPresetValue;
   }
+}
+
+function presetNameFromKey(tokenKey: string) {
+  return tokenName(tokenKey.replace(/^preset\.[^.]+\./, ""));
 }
 
 export default function DesignSystemPage() {
@@ -342,6 +431,11 @@ export default function DesignSystemPage() {
       { "All presets": 0 }
     );
   }, [presetTokens]);
+  const currentPresetValue = useMemo(() => parsePresetValue(formData.token_value), [formData.token_value]);
+  const isProgressPreset = formData.group_name === "Progress Bar";
+  const presetFillField: PresetValueKey = isProgressPreset ? "foreground" : "background";
+  const presetSecondaryField: PresetValueKey = isProgressPreset ? "track" : "foreground";
+  const presetSecondaryLabel = isProgressPreset ? "Track" : "Content";
 
   const fetchTokens = async () => {
     setLoading(true);
@@ -689,7 +783,7 @@ export default function DesignSystemPage() {
     fetchTokens();
   };
 
-  const updatePresetValue = (field: keyof typeof defaultPresetValue, value: string) => {
+  const updatePresetValue = (field: PresetValueKey, value: string) => {
     const parsed = parsePresetValue(formData.token_value);
     setFormData({
       ...formData,
@@ -1185,11 +1279,12 @@ export default function DesignSystemPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   {visiblePresetTokens.map((preset) => {
                     const value = parsePresetValue(preset.token_value);
+                    const isProgress = preset.group_name === "Progress Bar";
                     return (
                       <div key={preset.id} className="rounded-lg border border-[#ebe7df] bg-white p-5">
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <h3 className="font-semibold">{tokenName(preset.token_key.replace(/^preset\.[^.]+\./, ""))}</h3>
+                            <h3 className="font-semibold">{presetNameFromKey(preset.token_key)}</h3>
                             <p className="mt-1 text-sm text-[#77758a]">{preset.group_name}</p>
                           </div>
                           <div className="flex gap-2">
@@ -1202,15 +1297,29 @@ export default function DesignSystemPage() {
                           </div>
                         </div>
                         <div className="mt-5 rounded-lg border border-[#ded9cf] bg-[#fffdfa] p-5">
-                          <div
-                            className="h-4 w-40 overflow-hidden rounded-sm"
-                            style={{ backgroundColor: value.track, borderRadius: `${value.radius}px` }}
-                          >
+                          {isProgress ? (
                             <div
-                              className="h-full w-2/3"
-                              style={{ backgroundColor: value.foreground, borderRadius: `${value.radius}px` }}
-                            />
-                          </div>
+                              className="h-4 w-40 overflow-hidden rounded-sm"
+                              style={{ backgroundColor: value.track, borderRadius: `${value.radius}px` }}
+                            >
+                              <div
+                                className="h-full w-2/3"
+                                style={{ backgroundColor: value.foreground, borderRadius: `${value.radius}px` }}
+                              />
+                            </div>
+                          ) : (
+                            <div
+                              className="inline-flex min-h-12 min-w-32 items-center justify-center border border-[#ded9cf] text-sm font-medium"
+                              style={{
+                                backgroundColor: value.background,
+                                color: value.foreground,
+                                borderRadius: `${value.radius}px`,
+                                padding: `${value.padding}px`,
+                              }}
+                            >
+                              {preset.group_name}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -1264,7 +1373,7 @@ export default function DesignSystemPage() {
                           <Input
                             id="preset_name"
                             placeholder="e.g. Primary CTA"
-                            value={formData.token_key.startsWith("preset.") ? tokenName(formData.token_key.replace(/^preset\.[^.]+\./, "")) : formData.token_key}
+                            value={formData.token_key.startsWith("preset.") ? presetNameFromKey(formData.token_key) : formData.token_key}
                             onChange={(event) => setFormData({ ...formData, token_key: event.target.value })}
                           />
                         </div>
@@ -1275,7 +1384,7 @@ export default function DesignSystemPage() {
                               <label key={item} className="flex items-center gap-2">
                                 <input
                                   type="checkbox"
-                                  checked={parsePresetValue(formData.token_value).applicability.includes(item)}
+                                  checked={currentPresetValue.applicability.includes(item)}
                                   onChange={() => togglePresetApplicability(item)}
                                 />
                                 {item}
@@ -1291,15 +1400,15 @@ export default function DesignSystemPage() {
                             <div
                               className="h-5 w-40 overflow-hidden"
                               style={{
-                                backgroundColor: parsePresetValue(formData.token_value).track,
-                                borderRadius: `${parsePresetValue(formData.token_value).radius}px`,
+                                backgroundColor: currentPresetValue.track,
+                                borderRadius: `${currentPresetValue.radius}px`,
                               }}
                             >
                               <div
                                 className="h-full w-2/3"
                                 style={{
-                                  backgroundColor: parsePresetValue(formData.token_value).foreground,
-                                  borderRadius: `${parsePresetValue(formData.token_value).radius}px`,
+                                  backgroundColor: currentPresetValue.foreground,
+                                  borderRadius: `${currentPresetValue.radius}px`,
                                 }}
                               />
                             </div>
@@ -1307,13 +1416,13 @@ export default function DesignSystemPage() {
                             <div
                               className="min-h-20 w-44 border border-[#ded9cf] text-center text-sm"
                               style={{
-                                backgroundColor: parsePresetValue(formData.token_value).background,
-                                color: parsePresetValue(formData.token_value).foreground,
-                                borderRadius: `${parsePresetValue(formData.token_value).radius}px`,
-                                padding: `${parsePresetValue(formData.token_value).padding}px`,
+                                backgroundColor: currentPresetValue.background,
+                                color: currentPresetValue.foreground,
+                                borderRadius: `${currentPresetValue.radius}px`,
+                                padding: `${currentPresetValue.padding}px`,
                               }}
                             >
-                              Boopi preset
+                              {formData.group_name || "Boopi preset"}
                             </div>
                           )}
                         </div>
@@ -1342,23 +1451,23 @@ export default function DesignSystemPage() {
                           ))}
                         </div>
 
-                        <Label htmlFor="preset_foreground" className="mt-5 block">Color</Label>
+                        <Label htmlFor="preset_fill_color" className="mt-5 block">Color</Label>
                         <div className="mt-2 flex overflow-hidden rounded-lg border border-[#ded9cf]">
                           <Input
-                            id="preset_foreground"
+                            id="preset_fill_color"
                             type="color"
-                            value={parsePresetValue(formData.token_value).foreground}
-                            onChange={(event) => updatePresetValue("foreground", event.target.value)}
+                            value={isHexColor(currentPresetValue[presetFillField]) ? currentPresetValue[presetFillField] : "#000000"}
+                            onChange={(event) => updatePresetValue(presetFillField, event.target.value)}
                             className="h-12 w-14 rounded-none border-0 px-2"
                           />
                           <Input
-                            value={parsePresetValue(formData.token_value).foreground.replace("#", "").toUpperCase()}
-                            onChange={(event) => updatePresetValue("foreground", `#${event.target.value}`)}
+                            value={currentPresetValue[presetFillField].replace("#", "").toUpperCase()}
+                            onChange={(event) => updatePresetValue(presetFillField, `#${event.target.value}`)}
                             className="h-12 rounded-none border-0 font-mono uppercase"
                           />
                         </div>
 
-                        <Label className="mt-6 block">Track</Label>
+                        <Label className="mt-6 block">{presetSecondaryLabel}</Label>
                         <div className="mt-3 grid grid-cols-3 gap-2">
                           {["solid", "gradient", "none"].map((mode) => (
                             <button
@@ -1376,18 +1485,18 @@ export default function DesignSystemPage() {
                           ))}
                         </div>
 
-                        <Label htmlFor="preset_track" className="mt-5 block">Color</Label>
+                        <Label htmlFor="preset_secondary_color" className="mt-5 block">Color</Label>
                         <div className="mt-2 flex overflow-hidden rounded-lg border border-[#ded9cf]">
                           <Input
-                            id="preset_track"
+                            id="preset_secondary_color"
                             type="color"
-                            value={parsePresetValue(formData.token_value).track}
-                            onChange={(event) => updatePresetValue("track", event.target.value)}
+                            value={isHexColor(currentPresetValue[presetSecondaryField]) ? currentPresetValue[presetSecondaryField] : "#000000"}
+                            onChange={(event) => updatePresetValue(presetSecondaryField, event.target.value)}
                             className="h-12 w-14 rounded-none border-0 px-2"
                           />
                           <Input
-                            value={parsePresetValue(formData.token_value).track.replace("#", "").toUpperCase()}
-                            onChange={(event) => updatePresetValue("track", `#${event.target.value}`)}
+                            value={currentPresetValue[presetSecondaryField].replace("#", "").toUpperCase()}
+                            onChange={(event) => updatePresetValue(presetSecondaryField, `#${event.target.value}`)}
                             className="h-12 rounded-none border-0 font-mono uppercase"
                           />
                         </div>
@@ -1397,7 +1506,7 @@ export default function DesignSystemPage() {
                           <Input
                             id="preset_radius"
                             type="number"
-                            value={parsePresetValue(formData.token_value).radius}
+                            value={currentPresetValue.radius}
                             onChange={(event) => updatePresetValue("radius", event.target.value)}
                             className="pr-10"
                           />
@@ -1408,7 +1517,7 @@ export default function DesignSystemPage() {
                         <Input
                           id="preset_padding"
                           type="number"
-                          value={parsePresetValue(formData.token_value).padding}
+                          value={currentPresetValue.padding}
                           onChange={(event) => updatePresetValue("padding", event.target.value)}
                           className="mt-2"
                         />
