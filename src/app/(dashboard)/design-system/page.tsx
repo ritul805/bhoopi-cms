@@ -791,7 +791,9 @@ export default function DesignSystemPage() {
 
     const { error } = editingId
       ? await supabase.from("design_tokens").update(payload).eq("id", editingId)
-      : await supabase.from("design_tokens").insert([payload]);
+      : await supabase
+          .from("design_tokens")
+          .upsert([payload], { onConflict: "token_key,theme" });
 
     setSaving(false);
     if (error) {
