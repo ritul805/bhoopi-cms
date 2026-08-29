@@ -436,7 +436,8 @@ export default function DesignSystemPage() {
   const colorCards = useMemo(() => {
     const savedByKey = new Map(colorTokens.map((token) => [`${token.theme || "light"}:${token.token_key}`, token]));
     const seeds = activeTheme === "dark" ? boopiDarkColorSeeds : boopiColorSeeds;
-    return seeds.map(([name, key, value, description], index) => {
+    const seedKeys = new Set<string>(seeds.map(([, key]) => key));
+    const seededCards = seeds.map(([name, key, value, description], index) => {
       const saved = savedByKey.get(`${activeTheme}:${key}`);
       return {
         id: saved?.id || key,
@@ -449,6 +450,21 @@ export default function DesignSystemPage() {
         savedToken: saved || null,
       };
     });
+
+    const customCards = colorTokens
+      .filter((token) => (token.theme || "light") === activeTheme && !seedKeys.has(token.token_key))
+      .map((token) => ({
+        id: token.id,
+        name: tokenName(token.token_key),
+        token_key: token.token_key,
+        token_value: token.token_value,
+        description: token.description,
+        sort_order: token.sort_order ?? seededCards.length,
+        is_active: token.is_active,
+        savedToken: token,
+      }));
+
+    return [...seededCards, ...customCards];
   }, [activeTheme, colorTokens]);
 
   const presetTokens = useMemo(
