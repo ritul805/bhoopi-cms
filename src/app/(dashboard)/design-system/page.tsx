@@ -140,20 +140,20 @@ type SemanticColorSeed = readonly [name: string, key: string, light: string, dar
 
 const semanticColorSeeds: readonly SemanticColorSeed[] = [
   ["Profile Text Primary", "profile.text.primary", "#FFFFFF", "#FFFFFF", "Primary Profile foreground."],
-  ["Profile Text Secondary", "profile.text.secondary", "#FFFFFFB3", "#FFFFFFB3", "Secondary Profile foreground."],
-  ["Profile Card Background", "profile.card.background", "#FFFFFF1F", "#FFFFFF1F", "Profile glass card background."],
-  ["Profile Card Border", "profile.card.border", "#FFFFFF3D", "#FFFFFF3D", "Profile glass card border."],
-  ["Profile Row Divider", "profile.row.divider", "#FFFFFF24", "#FFFFFF24", "Profile row divider."],
-  ["Profile Icon Background", "profile.icon.background", "#FFFFFF1A", "#FFFFFF1A", "Profile icon bubble background."],
-  ["Profile Switch Track", "profile.switch.track", "#FFFFFF3D", "#FFFFFF3D", "Profile switch track."],
+  ["Profile Text Secondary", "profile.text.secondary", "#BFC5D8", "#BFC5D8", "Secondary Profile foreground."],
+  ["Profile Card Background", "profile.card.background", "#3E4A70", "#2B344C", "Profile glass card background fallback."],
+  ["Profile Card Border", "profile.card.border", "#586489", "#50576B", "Profile glass card border fallback."],
+  ["Profile Row Divider", "profile.row.divider", "#485477", "#3A435A", "Profile row divider fallback."],
+  ["Profile Icon Background", "profile.icon.background", "#394568", "#293249", "Profile icon bubble background fallback."],
+  ["Profile Switch Track", "profile.switch.track", "#586489", "#50576B", "Profile switch track fallback."],
   ["Profile Switch Thumb Active", "profile.switch.thumb.active", "#FFFFFF", "#FFFFFF", "Active Profile switch thumb."],
-  ["Profile Loading Placeholder", "profile.loading.placeholder", "#FFFFFF26", "#FFFFFF26", "Profile loading placeholder."],
-  ["Onboarding Control Background", "onboarding.control.background", "#FFFFFF1F", "#FFFFFF1F", "Onboarding glass control background."],
-  ["Onboarding Control Border", "onboarding.control.border", "#FFFFFF3D", "#FFFFFF3D", "Onboarding control border."],
-  ["Onboarding Choice Background", "onboarding.choice.background", "#FFFFFF1F", "#FFFFFF1F", "Onboarding choice background."],
-  ["Onboarding Choice Border", "onboarding.choice.border", "#FFFFFF3D", "#FFFFFF3D", "Onboarding choice border."],
-  ["Onboarding OTP Box Background", "onboarding.otp.box.background", "#FFFFFF1F", "#FFFFFF1F", "OTP box background."],
-  ["Onboarding OTP Box Border", "onboarding.otp.box.border", "#FFFFFF3D", "#FFFFFF3D", "OTP box border."],
+  ["Profile Loading Placeholder", "profile.loading.placeholder", "#445174", "#343E55", "Profile loading placeholder fallback."],
+  ["Onboarding Control Background", "onboarding.control.background", "#3E4A70", "#2B344C", "Onboarding glass control background fallback."],
+  ["Onboarding Control Border", "onboarding.control.border", "#586489", "#50576B", "Onboarding control border fallback."],
+  ["Onboarding Choice Background", "onboarding.choice.background", "#3E4A70", "#2B344C", "Onboarding choice background fallback."],
+  ["Onboarding Choice Border", "onboarding.choice.border", "#586489", "#50576B", "Onboarding choice border fallback."],
+  ["Onboarding OTP Box Background", "onboarding.otp.box.background", "#3E4A70", "#2B344C", "OTP box background fallback."],
+  ["Onboarding OTP Box Border", "onboarding.otp.box.border", "#586489", "#50576B", "OTP box border fallback."],
   ["Onboarding Progress Active", "onboarding.progress.active", "#00AEEF", "#00AEEF", "Active onboarding progress step."],
   ["Onboarding Progress Inactive", "onboarding.progress.inactive", "#D0D5DD", "#667085", "Inactive onboarding progress step."],
   ["Onboarding Header Icon", "onboarding.header.icon", "#FFFFFF", "#FFFFFF", "Onboarding header icon."],
@@ -432,6 +432,12 @@ const presetSeeds = [
   ],
 ] as const;
 
+function databaseColorValue(value: string) {
+  // The mobile/API color contract is #RRGGBB. Alpha remains a component-level
+  // concern until the design_tokens schema gains an explicit opacity field.
+  return /^#[0-9a-f]{8}$/i.test(value) ? value.slice(0, 7) : value;
+}
+
 const defaultDesignTokens: DesignTokenPayload[] = [
   ...boopiColorSeeds.map(([, key, value, description], index) => ({
     token_key: key,
@@ -455,8 +461,8 @@ const defaultDesignTokens: DesignTokenPayload[] = [
   })),
   ...semanticColorSeeds.flatMap(([, key, light, dark, description], index) =>
     ([
-      { token_key: key, token_value: light, token_type: "color", group_name: key.split(".")[0], theme: "light", description, sort_order: 100 + index, is_active: true },
-      { token_key: key, token_value: dark, token_type: "color", group_name: key.split(".")[0], theme: "dark", description, sort_order: 100 + index, is_active: true },
+      { token_key: key, token_value: databaseColorValue(light), token_type: "color", group_name: key.split(".")[0], theme: "light", description, sort_order: 100 + index, is_active: true },
+      { token_key: key, token_value: databaseColorValue(dark), token_type: "color", group_name: key.split(".")[0], theme: "dark", description, sort_order: 100 + index, is_active: true },
     ] satisfies DesignTokenPayload[]),
   ),
   ...typographySeeds.map(([name, key, size, lineHeight, letterSpacing, weight], index) => ({
