@@ -97,3 +97,9 @@ values
   ('player.background.primary', '#2F80ED', 'color', 'boopi', 'dark', 'Dark story player screen color.', 18, true),
   ('home.card.text.primary', '#FFFFFF', 'color', 'boopi', 'dark', 'Text over dark story cards.', 19, true)
 on conflict (token_key, theme) do nothing;
+
+-- The CMS design-system page owns the complete semantic default catalog.
+-- On first authenticated load it idempotently inserts any missing phase tokens
+-- (Profile, Onboarding, Soon, Subscription, Episodes/Player, Home, and Library)
+-- using the same (token_key, theme) conflict target declared above. This file
+-- intentionally keeps the compact base palette required before the CMS opens.
