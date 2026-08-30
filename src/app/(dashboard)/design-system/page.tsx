@@ -889,12 +889,25 @@ export default function DesignSystemPage() {
       const missingDefaults = defaultDesignTokens.filter((token) => !existingKeys.has(`${token.token_key}:${token.theme}`));
 
       if (missingDefaults.length > 0) {
-        const { error: seedError } = await supabase
-          .from("design_tokens")
-          .upsert(missingDefaults, { onConflict: "token_key,theme", ignoreDuplicates: true });
+        let seedError: { message: string; details?: string; hint?: string; code?: string } | null = null;
+
+        // Keep each PostgREST request small enough for hosted deployments and
+        // make a single failed batch diagnosable without losing earlier work.
+        for (let offset = 0; offset < missingDefaults.length; offset += 40) {
+          const batch = missingDefaults.slice(offset, offset + 40);
+          const { error: batchError } = await supabase
+            .from("design_tokens")
+            .upsert(batch, { onConflict: "token_key,theme", ignoreDuplicates: true });
+
+          if (batchError) {
+            seedError = batchError;
+            break;
+          }
+        }
 
         if (seedError) {
           console.error("Error seeding default design tokens:", seedError);
+          alert(`Could not seed all design tokens: ${seedError.message}`);
           setTokens(existingTokens);
         } else {
           const { data: seededData, error: refetchError } = await supabase
