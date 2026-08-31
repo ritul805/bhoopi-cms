@@ -527,6 +527,13 @@ function colorPickerValue(value: string, fallback = "#000000") {
   return normalized ? normalized.slice(0, 7) : fallback;
 }
 
+function preserveColorAlpha(nextValue: string, currentValue: string) {
+  const normalized = normalizeHexColor(nextValue);
+  const current = normalizeHexColor(currentValue);
+  if (!normalized) return nextValue;
+  return current?.length === 9 && normalized.length === 7 ? `${normalized}${current.slice(7)}` : normalized;
+}
+
 function slugify(value: string) {
   return value
     .trim()
@@ -638,6 +645,8 @@ export default function DesignSystemPage() {
   const [selectedPresetCategory, setSelectedPresetCategory] = useState("All presets");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [designSystemVersion, setDesignSystemVersion] = useState<number | null>(null);
+  const [publishingVersion, setPublishingVersion] = useState(false);
 
   const colorTokens = useMemo(
     () => tokens.filter((token) => token.token_type === "color"),
@@ -656,6 +665,7 @@ export default function DesignSystemPage() {
         token_key: key,
         token_value: saved?.token_value || value,
         description: saved?.description || description,
+        group_name: saved?.group_name || "boopi",
         sort_order: saved?.sort_order ?? index,
         is_active: saved?.is_active ?? true,
         savedToken: saved || null,
@@ -670,6 +680,7 @@ export default function DesignSystemPage() {
         token_key: token.token_key,
         token_value: token.token_value,
         description: token.description,
+        group_name: token.group_name || token.token_key.split(".")[0],
         sort_order: token.sort_order ?? seededCards.length,
         is_active: token.is_active,
         savedToken: token,
@@ -960,8 +971,49 @@ export default function DesignSystemPage() {
     setLoading(false);
   };
 
+  const fetchDesignSystemVersion = async () => {
+    const { data, error } = await supabase
+      .from("app_config_versions")
+      .select("version")
+      .eq("config_key", "designSystem")
+      .single();
+
+    if (error) {
+      console.error("Error fetching design system version:", error);
+      return;
+    }
+    setDesignSystemVersion(data.version);
+  };
+
+  const publishDesignSystemVersion = async () => {
+    if (designSystemVersion === null || publishingVersion) return;
+    const nextVersion = designSystemVersion + 1;
+    if (!confirm(`Publish the current design tokens as Design System V${nextVersion}?`)) return;
+
+    setPublishingVersion(true);
+    const { data, error } = await supabase
+      .from("app_config_versions")
+      .update({ version: nextVersion, updated_at: new Date().toISOString() })
+      .eq("config_key", "designSystem")
+      .eq("version", designSystemVersion)
+      .select("version")
+      .single();
+    setPublishingVersion(false);
+
+    if (error) {
+      console.error("Error publishing design system version:", error);
+      alert(`Could not publish Design System V${nextVersion}: ${error.message}`);
+      fetchDesignSystemVersion();
+      return;
+    }
+
+    setDesignSystemVersion(data.version);
+    alert(`Design System V${data.version} is now published.`);
+  };
+
   useEffect(() => {
     fetchTokens();
+    fetchDesignSystemVersion();
   }, []);
 
   const resetForm = (tab: TabKey = activeTab) => {
@@ -1094,6 +1146,7 @@ export default function DesignSystemPage() {
       token_key: string;
       token_value: string;
       description: string | null;
+      group_name: string;
       savedToken: DesignToken | null;
     },
     index: number,
@@ -1111,23 +1164,32 @@ export default function DesignSystemPage() {
       token_key: token.token_key,
       token_value: normalizedValue,
       token_type: "color",
-      group_name: "boopi",
+      group_name: token.group_name,
       theme: token.savedToken?.theme || activeTheme,
       description: token.description || null,
       sort_order: index,
       is_active: true,
     };
 
-    const { error } = token.savedToken
-      ? await supabase.from("design_tokens").update(payload).eq("id", token.savedToken.id)
-      : await supabase.from("design_tokens").insert([payload]);
+    const query = token.savedToken
+      ? supabase.from("design_tokens").update(payload).eq("id", token.savedToken.id)
+      : supabase.from("design_tokens").insert([payload]);
+    const { data: savedRows, error } = await query
+      .select("id, token_key, token_value, token_type, group_name, theme, description, sort_order, is_active");
 
     setSaving(false);
     if (error) {
       alert(`Could not save ${token.token_key}: ${error.message}`);
       return;
     }
-    fetchTokens();
+    const savedToken = savedRows?.[0];
+    if (!savedToken) return;
+    setTokens((current) => {
+      const exists = current.some((item) => item.id === savedToken.id);
+      return exists
+        ? current.map((item) => (item.id === savedToken.id ? savedToken : item))
+        : [...current, savedToken];
+    });
   };
 
   const resetTypographyForm = () => {
@@ -1354,10 +1416,29 @@ export default function DesignSystemPage() {
               Shared colors, type, and presets for Boopi app screens.
             </p>
           </div>
-          <div className="rounded-full border border-[#e4dfd5] bg-[#faf8f3] px-5 py-3 text-sm text-[#77758a] shadow-sm">
-            <span className="font-medium">Frame width</span>{" "}
-            <span className="font-bold text-[#1d1b2a]">360px</span>
-            <span className="ml-2">permanent</span>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <div className="rounded-full border border-[#e4dfd5] bg-[#faf8f3] px-5 py-3 text-sm text-[#77758a] shadow-sm">
+              <span className="font-medium">Frame width</span>{" "}
+              <span className="font-bold text-[#1d1b2a]">360px</span>
+              <span className="ml-2">permanent</span>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border border-[#e4dfd5] bg-white p-2 pl-4 shadow-sm">
+              <span className="text-sm text-[#77758a]">
+                Published <strong className="text-[#1d1b2a]">V{designSystemVersion ?? "-"}</strong>
+              </span>
+              <Button
+                type="button"
+                onClick={publishDesignSystemVersion}
+                disabled={designSystemVersion === null || publishingVersion}
+                className="bg-[#5146ff] hover:bg-[#4338e8]"
+              >
+                {publishingVersion
+                  ? "Publishing..."
+                  : designSystemVersion === null
+                    ? "Loading version..."
+                    : `Publish V${designSystemVersion + 1}`}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -1504,7 +1585,9 @@ export default function DesignSystemPage() {
                           key={`${token.token_key}-picker-${token.token_value}`}
                           type="color"
                           defaultValue={colorPickerValue(token.token_value, "#6750A4")}
-                          onChange={(event) => saveColorCard(token, index, event.target.value)}
+                          onChange={(event) =>
+                            saveColorCard(token, index, preserveColorAlpha(event.target.value, token.token_value))
+                          }
                           className="h-7 w-7 cursor-pointer rounded-md border border-[#ded9cf] bg-transparent p-0"
                           aria-label={`Edit ${token.token_key} color`}
                         />
