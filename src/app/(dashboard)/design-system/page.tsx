@@ -175,7 +175,7 @@ const semanticColorSeeds: readonly SemanticColorSeed[] = [
   ["Subscription Card Background", "subscription.card.background", "#FFFFFF1F", "#FFFFFF1F", "Subscription glass card background."],
   ["Subscription Card Border", "subscription.card.border", "#FFFFFF3D", "#FFFFFF3D", "Subscription card border."],
   ["Subscription Card Shadow", "subscription.card.shadow", "#00000033", "#00000066", "Subscription card shadow."],
-  ["Subscription CTA Background", "subscription.cta.background", "#6750A4", "#D0BCFF", "Subscription primary CTA background."],
+  ["Subscription CTA Background", "subscription.cta.background", "#FFFFFF1F", "#FFFFFF1F", "Subscription glass CTA background."],
   ["Subscription CTA Border", "subscription.cta.border", "#FFFFFF3D", "#FFFFFF3D", "Subscription CTA border."],
   ["Subscription Control Background", "subscription.control.background", "#FFFFFF1F", "#FFFFFF1F", "Subscription control background."],
   ["Subscription Control Border", "subscription.control.border", "#FFFFFF3D", "#FFFFFF3D", "Subscription control border."],
@@ -255,7 +255,7 @@ const semanticColorSeeds: readonly SemanticColorSeed[] = [
   ["Favorites Card Shadow", "favorites.card.shadow", "#00000033", "#00000066", "Favorites card shadow."],
   ["Favorites Icon Button Background", "favorites.icon-button.background", "#FFFFFF1F", "#FFFFFF1F", "Favorites icon button background."],
   ["Favorites Icon Button Foreground", "favorites.icon-button.foreground", "#FFFFFF", "#FFFFFF", "Favorites icon button foreground."],
-  ["Favorites Empty CTA Background", "favorites.empty.cta.background", "#6750A4", "#D0BCFF", "Favorites empty CTA background."],
+  ["Favorites Empty CTA Background", "favorites.empty.cta.background", "#FFFFFF1F", "#FFFFFF1F", "Favorites empty glass CTA background."],
   ["Favorites Empty CTA Border", "favorites.empty.cta.border", "#FFFFFF3D", "#FFFFFF3D", "Favorites empty CTA border."],
 ];
 
@@ -908,7 +908,13 @@ export default function DesignSystemPage() {
         const existing = existingByKey.get(`${token.token_key}:${token.theme}`);
         return existing?.token_value.toUpperCase() === token.token_value.slice(0, 7);
       });
-      const tokensToUpsert = [...missingDefaults, ...alphaRepairs];
+      const glassCtaKeys = new Set(["subscription.cta.background", "favorites.empty.cta.background"]);
+      const glassCtaRepairs = defaultDesignTokens.filter((token) => {
+        if (!glassCtaKeys.has(token.token_key)) return false;
+        const existing = existingByKey.get(`${token.token_key}:${token.theme}`);
+        return existing ? ["#6750A4", "#D0BCFF"].includes(existing.token_value.toUpperCase()) : false;
+      });
+      const tokensToUpsert = [...missingDefaults, ...alphaRepairs, ...glassCtaRepairs];
 
       if (tokensToUpsert.length > 0) {
         let seedError: { message: string; details?: string; hint?: string; code?: string } | null = null;
