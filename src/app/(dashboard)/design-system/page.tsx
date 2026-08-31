@@ -433,9 +433,8 @@ const presetSeeds = [
 ] as const;
 
 function databaseColorValue(value: string) {
-  // The mobile/API color contract is #RRGGBB. Alpha remains a component-level
-  // concern until the design_tokens schema gains an explicit opacity field.
-  return /^#[0-9a-f]{8}$/i.test(value) ? value.slice(0, 7) : value;
+  const normalized = value.trim().replace(/^#/, "");
+  return `#${normalized.toUpperCase()}`;
 }
 
 const defaultDesignTokens: DesignTokenPayload[] = [
@@ -515,7 +514,17 @@ function tokenName(tokenKey: string) {
 }
 
 function isHexColor(value: string) {
-  return /^#[0-9a-f]{3,8}$/i.test(value.trim());
+  return /^#(?:[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value.trim());
+}
+
+function normalizeHexColor(value: string) {
+  const normalized = value.trim().startsWith("#") ? value.trim() : `#${value.trim()}`;
+  return isHexColor(normalized) ? normalized.toUpperCase() : null;
+}
+
+function colorPickerValue(value: string, fallback = "#000000") {
+  const normalized = normalizeHexColor(value);
+  return normalized ? normalized.slice(0, 7) : fallback;
 }
 
 function slugify(value: string) {
@@ -893,17 +902,24 @@ export default function DesignSystemPage() {
       const existingTokens = data || [];
       const existingKeys = new Set(existingTokens.map((token) => `${token.token_key}:${token.theme || "light"}`));
       const missingDefaults = defaultDesignTokens.filter((token) => !existingKeys.has(`${token.token_key}:${token.theme}`));
+      const existingByKey = new Map(existingTokens.map((token) => [`${token.token_key}:${token.theme || "light"}`, token]));
+      const alphaRepairs = defaultDesignTokens.filter((token) => {
+        if (token.token_type !== "color" || !/^#[0-9A-F]{8}$/.test(token.token_value)) return false;
+        const existing = existingByKey.get(`${token.token_key}:${token.theme}`);
+        return existing?.token_value.toUpperCase() === token.token_value.slice(0, 7);
+      });
+      const tokensToUpsert = [...missingDefaults, ...alphaRepairs];
 
-      if (missingDefaults.length > 0) {
+      if (tokensToUpsert.length > 0) {
         let seedError: { message: string; details?: string; hint?: string; code?: string } | null = null;
 
         // Keep each PostgREST request small enough for hosted deployments and
         // make a single failed batch diagnosable without losing earlier work.
-        for (let offset = 0; offset < missingDefaults.length; offset += 40) {
-          const batch = missingDefaults.slice(offset, offset + 40);
+        for (let offset = 0; offset < tokensToUpsert.length; offset += 40) {
+          const batch = tokensToUpsert.slice(offset, offset + 40);
           const { error: batchError } = await supabase
             .from("design_tokens")
-            .upsert(batch, { onConflict: "token_key,theme", ignoreDuplicates: true });
+            .upsert(batch, { onConflict: "token_key,theme" });
 
           if (batchError) {
             seedError = batchError;
@@ -1007,14 +1023,21 @@ export default function DesignSystemPage() {
       alert("Token key and value are required.");
       return;
     }
+    if (activeTab === "colors" && !normalizeHexColor(formData.token_value)) {
+      alert("Please enter a color as #RRGGBB or #RRGGBBAA.");
+      return;
+    }
 
     setSaving(true);
     const payload = {
       token_key: formData.token_key.trim(),
-      token_value: formData.token_value.trim(),
+      token_value:
+        activeTab === "colors"
+          ? normalizeHexColor(formData.token_value) || formData.token_value.trim()
+          : formData.token_value.trim(),
       token_type: formData.token_type.trim() || "color",
       group_name: formData.group_name.trim() || "boopi",
-      theme: activeTab === "colors" ? activeTheme : "global",
+      theme: activeTab === "colors" ? activeTheme : "light",
       description: formData.description.trim() || null,
       sort_order: Number(formData.sort_order || 0),
       is_active: formData.is_active,
@@ -1043,7 +1066,7 @@ export default function DesignSystemPage() {
     const { error } = await supabase.from("design_tokens").insert([
       {
         token_key: key,
-        token_value: value,
+        token_value: databaseColorValue(value),
         token_type: "color",
         group_name: "boopi",
         theme: activeTheme,
@@ -1070,9 +1093,9 @@ export default function DesignSystemPage() {
     index: number,
     nextValue: string
   ) => {
-    const normalizedValue = nextValue.trim().startsWith("#") ? nextValue.trim() : `#${nextValue.trim()}`;
-    if (!isHexColor(normalizedValue)) {
-      alert("Please enter a valid hex color.");
+    const normalizedValue = normalizeHexColor(nextValue);
+    if (!normalizedValue) {
+      alert("Please enter a color as #RRGGBB or #RRGGBBAA.");
       return;
     }
     if (normalizedValue.toLowerCase() === token.token_value.toLowerCase()) return;
@@ -1080,7 +1103,7 @@ export default function DesignSystemPage() {
     setSaving(true);
     const payload = {
       token_key: token.token_key,
-      token_value: normalizedValue.toUpperCase(),
+      token_value: normalizedValue,
       token_type: "color",
       group_name: "boopi",
       theme: token.savedToken?.theme || activeTheme,
@@ -1404,7 +1427,7 @@ export default function DesignSystemPage() {
                 <div className="flex gap-2">
                   <Input
                     type="color"
-                    value={isHexColor(formData.token_value) ? formData.token_value : "#6750a4"}
+                    value={colorPickerValue(formData.token_value, "#6750A4")}
                     onChange={(event) => setFormData({ ...formData, token_value: event.target.value })}
                     className="w-12 px-1"
                   />
@@ -1474,7 +1497,7 @@ export default function DesignSystemPage() {
                         <input
                           key={`${token.token_key}-picker-${token.token_value}`}
                           type="color"
-                          defaultValue={isHexColor(token.token_value) ? token.token_value : "#6750A4"}
+                          defaultValue={colorPickerValue(token.token_value, "#6750A4")}
                           onChange={(event) => saveColorCard(token, index, event.target.value)}
                           className="h-7 w-7 cursor-pointer rounded-md border border-[#ded9cf] bg-transparent p-0"
                           aria-label={`Edit ${token.token_key} color`}
@@ -1902,7 +1925,7 @@ export default function DesignSystemPage() {
                           <Input
                             id="preset_fill_color"
                             type="color"
-                            value={isHexColor(currentPresetValue[presetFillField]) ? currentPresetValue[presetFillField] : "#000000"}
+                            value={colorPickerValue(currentPresetValue[presetFillField])}
                             onChange={(event) => updatePresetValue(presetFillField, event.target.value)}
                             className="h-12 w-14 rounded-none border-0 px-2"
                           />
@@ -1936,7 +1959,7 @@ export default function DesignSystemPage() {
                           <Input
                             id="preset_secondary_color"
                             type="color"
-                            value={isHexColor(currentPresetValue[presetSecondaryField]) ? currentPresetValue[presetSecondaryField] : "#000000"}
+                            value={colorPickerValue(currentPresetValue[presetSecondaryField])}
                             onChange={(event) => updatePresetValue(presetSecondaryField, event.target.value)}
                             className="h-12 w-14 rounded-none border-0 px-2"
                           />
