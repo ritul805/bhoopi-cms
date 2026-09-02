@@ -2,7 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Book, Layers, LayoutDashboard, ListMusic, LogOut, Palette, Tags } from "lucide-react";
+import {
+  BarChart3,
+  Bell,
+  Book,
+  Layers,
+  LayoutDashboard,
+  ListMusic,
+  LogOut,
+  Palette,
+  Tags,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
@@ -12,6 +22,8 @@ export function Sidebar() {
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Analytics", href: "/analytics", icon: BarChart3 },
+    { name: "Notifications", href: "/notifications", icon: Bell },
     { name: "Story Cards", href: "/story-cards", icon: Layers },
     { name: "Stories Inside Cards", href: "/stories", icon: Book },
     { name: "Upload Episodes", href: "/episodes", icon: ListMusic },
@@ -26,9 +38,13 @@ export function Sidebar() {
 
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-gray-50/40">
-      <div className="flex h-14 items-center border-b px-4 font-semibold">
+      <Link
+        href="/"
+        className="flex h-14 shrink-0 items-center border-b px-4 font-semibold transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+        aria-label="Open Audiobook CMS dashboard"
+      >
         Audiobook CMS
-      </div>
+      </Link>
       <div className="flex-1 overflow-auto py-4">
         <nav className="grid items-start px-2 text-sm font-medium">
           {navigation.map((item) => {

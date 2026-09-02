@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(ALLOWED_ADMIN_EMAIL);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -60,7 +60,6 @@ export default function Login() {
               <Input
                 id="email"
                 type="email"
-                placeholder={ALLOWED_ADMIN_EMAIL}
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
