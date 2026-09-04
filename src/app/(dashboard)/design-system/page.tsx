@@ -172,21 +172,21 @@ const semanticColorSeeds: readonly SemanticColorSeed[] = [
   ["Subscription Background Bottom", "subscription.background.bottom", "#17234F", "#080D1F", "Subscription background gradient bottom."],
   ["Subscription Status Bar", "subscription.status-bar.background", "#24325F", "#111827", "Subscription status bar background."],
   ["Subscription Nav Bar", "subscription.nav-bar.background", "#17234F", "#080D1F", "Subscription navigation bar background."],
-  ["Subscription Card Background", "subscription.card.background", "#FFFFFF1F", "#FFFFFF1F", "Subscription glass card background."],
-  ["Subscription Card Border", "subscription.card.border", "#FFFFFF3D", "#FFFFFF3D", "Subscription card border."],
+  ["Subscription Card Background", "subscription.card.background", "#FFFFFF2E", "#FFFFFF2E", "Subscription glass card background."],
+  ["Subscription Card Border", "subscription.card.border", "#FFFFFF66", "#FFFFFF66", "Subscription card border."],
   ["Subscription Card Shadow", "subscription.card.shadow", "#00000033", "#00000066", "Subscription card shadow."],
-  ["Subscription CTA Background", "subscription.cta.background", "#FFFFFF1F", "#FFFFFF1F", "Subscription glass CTA background."],
-  ["Subscription CTA Border", "subscription.cta.border", "#FFFFFF3D", "#FFFFFF3D", "Subscription CTA border."],
-  ["Subscription Control Background", "subscription.control.background", "#FFFFFF1F", "#FFFFFF1F", "Subscription control background."],
-  ["Subscription Control Border", "subscription.control.border", "#FFFFFF3D", "#FFFFFF3D", "Subscription control border."],
+  ["Subscription CTA Background", "subscription.cta.background", "#FFFFFF2E", "#FFFFFF2E", "Subscription glass CTA background."],
+  ["Subscription CTA Border", "subscription.cta.border", "#FFFFFF66", "#FFFFFF66", "Subscription CTA border."],
+  ["Subscription Control Background", "subscription.control.background", "#FFFFFF2E", "#FFFFFF2E", "Subscription control background."],
+  ["Subscription Control Border", "subscription.control.border", "#FFFFFF99", "#FFFFFF99", "Subscription control border."],
   ["Subscription Control Shadow", "subscription.control.shadow", "#00000033", "#00000066", "Subscription control shadow."],
-  ["Subscription Panel Background", "subscription.panel.background", "#FFFFFF1F", "#FFFFFF1F", "Subscription panel background."],
-  ["Subscription Panel Border", "subscription.panel.border", "#FFFFFF3D", "#FFFFFF3D", "Subscription panel border."],
-  ["Subscription Plan Selected Border", "subscription.plan.selected-border", "#00AEEF", "#58AAF0", "Selected plan border."],
-  ["Subscription Plan Unselected Border", "subscription.plan.unselected-border", "#FFFFFF3D", "#FFFFFF3D", "Unselected plan border."],
-  ["Subscription Radio Fill", "subscription.plan.radio.selected-fill", "#00AEEF", "#58AAF0", "Selected plan radio fill."],
-  ["Subscription Radio Check", "subscription.plan.radio.check", "#FFFFFF", "#111827", "Selected plan radio check."],
-  ["Subscription Radio Border", "subscription.plan.radio.unselected-border", "#FFFFFF99", "#FFFFFF99", "Unselected plan radio border."],
+  ["Subscription Panel Background", "subscription.panel.background", "#FFFFFF2E", "#FFFFFF2E", "Subscription panel background."],
+  ["Subscription Panel Border", "subscription.panel.border", "#FFFFFF8A", "#FFFFFF8A", "Subscription panel border."],
+  ["Subscription Plan Selected Border", "subscription.plan.selected-border", "#99E1FA", "#99E1FA", "Selected plan border."],
+  ["Subscription Plan Unselected Border", "subscription.plan.unselected-border", "#FFFFFF66", "#FFFFFF66", "Unselected plan border."],
+  ["Subscription Radio Fill", "subscription.plan.radio.selected-fill", "#FFFFFF", "#FFFFFF", "Selected plan radio fill."],
+  ["Subscription Radio Check", "subscription.plan.radio.check", "#2D86EA", "#2D86EA", "Selected plan radio check."],
+  ["Subscription Radio Border", "subscription.plan.radio.unselected-border", "#FFFFFF66", "#FFFFFF66", "Unselected plan radio border."],
   ["Episodes Card Background", "episodes.card.background", "#FFFFFF1F", "#FFFFFF1F", "Episodes glass card background."],
   ["Episodes Card Border", "episodes.card.border", "#FFFFFF3D", "#FFFFFF3D", "Episodes card border."],
   ["Episodes Hero Border", "episodes.hero.border", "#FFFFFF3D", "#FFFFFF3D", "Episodes hero border."],
@@ -280,17 +280,20 @@ const semanticTypographySeeds: readonly SemanticTypographySeed[] = [
   ["Soon Card Title", "soon.card.title", "16", "1.5", "0", "600"],
   ["Soon Badge Label", "soon.badge.label", "12", "1.33", "0", "600"],
   ["Subscription Header Title", "subscription.header.title", "20", "1.2", "0", "600"],
-  ["Subscription Hero Title", "subscription.hero.title", "32", "1.25", "0", "700"],
-  ["Subscription Hero Subtitle", "subscription.hero.subtitle", "16", "1.5", "0", "400"],
-  ["Subscription Badge Label", "subscription.badge.label", "12", "1.33", "0", "700"],
-  ["Subscription Benefits Heading", "subscription.benefits.heading", "18", "1.33", "0", "600"],
-  ["Subscription Benefits Label", "subscription.benefits.label", "14", "1.43", "0", "500"],
-  ["Subscription Plan Label", "subscription.plan.label", "16", "1.5", "0", "600"],
-  ["Subscription Plan Price", "subscription.plan.price", "24", "1.33", "0", "700"],
-  ["Subscription CTA Label", "subscription.cta.label", "16", "1.5", "0", "600"],
-  ["Subscription Verification Title", "subscription.verification.title", "24", "1.33", "0", "700"],
-  ["Subscription Verification Subtitle", "subscription.verification.subtitle", "14", "1.43", "0", "400"],
-  ["Subscription Verification Digit", "subscription.verification.digit", "24", "1.33", "0", "600"],
+  ["Subscription Hero Title", "subscription.hero.title", "24", "1.166667", "-0.25", "700"],
+  ["Subscription Hero Subtitle", "subscription.hero.subtitle", "14", "1.428571", "0", "600"],
+  ["Subscription Badge Label", "subscription.badge.label", "14", "1.142857", "0.2", "700"],
+  ["Subscription Benefits Heading", "subscription.benefits.heading", "18", "1.111111", "0", "700"],
+  ["Subscription Benefits Label", "subscription.benefits.label", "12", "1.333333", "0", "600"],
+  ["Subscription Plan Label", "subscription.plan.label", "14", "1.428571", "0", "400"],
+  ["Subscription Plan Price", "subscription.plan.price", "16", "1.25", "0", "600"],
+  ["Subscription CTA Label", "subscription.cta.label", "16", "1.25", "0", "700"],
+  ["Subscription Verification Title", "subscription.verification.title", "24", "1.166667", "-0.25", "600"],
+  ["Subscription Verification Subtitle", "subscription.verification.subtitle", "14", "1.428571", "0", "600"],
+  ["Subscription Verification Digit", "subscription.verification.digit", "16", "1.25", "0", "600"],
+  ["Subscription Offer Kicker", "subscription.offer.kicker", "20", "1.2", "-0.25", "700"],
+  ["Subscription Offer Title", "subscription.offer.title", "24", "1.166667", "-0.25", "700"],
+  ["Subscription Offer Price", "subscription.offer.price", "56", "1.339286", "-0.9375", "700"],
   ["Episodes Header Title", "episodes.header.title", "20", "1.2", "0", "600"],
   ["Episodes Section Label", "episodes.section.label", "14", "1.43", "0", "600"],
   ["Episodes Hero Title", "episodes.hero.title", "24", "1.33", "0", "700"],
@@ -501,6 +504,37 @@ const defaultDesignTokens: DesignTokenPayload[] = [
     is_active: true,
   })),
 ];
+
+const approvedMembershipTokenKeys = new Set([
+  "home.card.text.primary",
+  "subscription.card.background",
+  "subscription.card.border",
+  "subscription.cta.background",
+  "subscription.cta.border",
+  "subscription.panel.background",
+  "subscription.panel.border",
+  "subscription.control.background",
+  "subscription.control.border",
+  "subscription.plan.selected-border",
+  "subscription.plan.unselected-border",
+  "subscription.plan.radio.selected-fill",
+  "subscription.plan.radio.check",
+  "subscription.plan.radio.unselected-border",
+  "subscription.badge.label",
+  "subscription.hero.title",
+  "subscription.hero.subtitle",
+  "subscription.benefits.heading",
+  "subscription.benefits.label",
+  "subscription.plan.label",
+  "subscription.plan.price",
+  "subscription.cta.label",
+  "subscription.verification.title",
+  "subscription.verification.subtitle",
+  "subscription.verification.digit",
+  "subscription.offer.kicker",
+  "subscription.offer.title",
+  "subscription.offer.price",
+]);
 
 function tokenName(tokenKey: string) {
   return tokenKey
@@ -925,7 +959,19 @@ export default function DesignSystemPage() {
         const existing = existingByKey.get(`${token.token_key}:${token.theme}`);
         return existing ? ["#6750A4", "#D0BCFF"].includes(existing.token_value.toUpperCase()) : false;
       });
-      const tokensToUpsert = [...missingDefaults, ...alphaRepairs, ...glassCtaRepairs];
+      const membershipRepairs = defaultDesignTokens.filter((token) => {
+        if (!approvedMembershipTokenKeys.has(token.token_key)) return false;
+        const existing = existingByKey.get(`${token.token_key}:${token.theme}`);
+        return existing ? existing.token_value !== token.token_value : false;
+      });
+      const tokensToUpsert = Array.from(
+        new Map(
+          [...missingDefaults, ...alphaRepairs, ...glassCtaRepairs, ...membershipRepairs].map((token) => [
+            `${token.token_key}:${token.theme}`,
+            token,
+          ]),
+        ).values(),
+      );
 
       if (tokensToUpsert.length > 0) {
         let seedError: { message: string; details?: string; hint?: string; code?: string } | null = null;
